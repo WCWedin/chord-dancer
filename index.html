@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chord Dancer</title>
+        <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+        <script>
+            const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+
+            const noteNames = [
+                ["C"],
+                ["C<sup>♯</sup>", "D<sup>♭</sup>"],
+                ["D"],
+                ["D<sup>♯</sup>", "E<sup>♭</sup>"],
+                ["E"],
+                ["F"],
+                ["F<sup>♯</sup>", "G<sup>♭</sup>"],
+                ["G"],
+                ["G<sup>♯</sup>", "A<sup>♭</sup>"],
+                ["A"],
+                ["A<sup>♯</sup>", "B<sup>♭</sup>"],
+                ["B"]
+            ];
+
+            const staffNoteNames = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
+
+            const thirds = {
+                "sus2": 2,
+                "min": 3,
+                "maj": 4,
+                "sus4": 5
+            };
+
+            const fifths = {
+                "perf4": 5,
+                "dim": 6,
+                "perf": 7,
+                "aug": 8
+            };
+
+            const min = "\uE874";
+            const maj = "\uE873";
+            const dim = "\uE870";
+            const aug = "\uE872";
+
+            const chordNames = {
+                [thirds.sus2]: {
+                    [fifths.perf4]: `<sup>2/4</sup>`,
+                    [fifths.dim]: `<sup>${dim} sus2</sup>`,
+                    [fifths.perf]: `<sup>sus2</sup>`,
+                    [fifths.aug]: `<sup>${aug} sus2</sup>`
+                },
+                [thirds.min]: {
+                    [fifths.perf4]: `<sup>4 </sup><sup class="min">${min}</sup>`,
+                    [fifths.dim]: `<sup>${dim}</sup>`,
+                    [fifths.perf]: `<sup class="min">${min}</sup>`,
+                    [fifths.aug]: `<sup>${aug} </sup><sup class="min">${min}</sup>`
+                },
+                [thirds.maj]: {
+                    [fifths.perf4]: `<sup>4${maj}</sup>`,
+                    [fifths.dim]: `<sup>${dim} ${maj}</sup>`,
+                    [fifths.perf]: `<sup>${maj}</sup>`,
+                    [fifths.aug]: `<sup>${aug}</sup>`
+                },
+                [thirds.sus4]: {
+                    [fifths.dim]: `<sup>${dim} sus4</sup>`,
+                    [fifths.perf]: `<sup>sus4</sup>`,
+                    [fifths.aug]: `<sup>${aug} sus4</sup>`
+                }
+            };
+            
+            function lowerRoot(root, third, fifth) {
+                const newRoot = (root - 1 + 12) % 12;
+                const newThird = (third + 1) % 12;
+                const newFifth = (fifth + 1) % 12;
+                
+                return [newRoot, newThird, newFifth];
+            }
+            
+            function raiseRoot(root, third, fifth) {
+                const newRoot = (root + 1) % 12;
+                const newThird = (third - 1 + 12) % 12;
+                const newFifth = (fifth - 1 + 12) % 12;
+                
+                return [newRoot, newThird, newFifth];
+            }
+            
+            function lowerThird(root, third, fifth) {
+                const newRoot = root;
+                const newThird = (third - 1 + 12) % 12;
+                const newFifth = fifth;
+                
+                return [newRoot, newThird, newFifth];
+            }
+            
+            function raiseThird(root, third, fifth) {
+                const newRoot = root;
+                const newThird = (third + 1) % 12;
+                const newFifth = fifth;
+                
+                return [newRoot, newThird, newFifth];
+            }
+            
+            function lowerFifth(root, third, fifth) {
+                const newRoot = root;
+                const newThird = third;
+                const newFifth = (fifth - 1 + 12) % 12;
+                
+                return [newRoot, newThird, newFifth];
+            }
+            
+            function raiseFifth(root, third, fifth) {
+                const newRoot = root;
+                const newThird = third;
+                const newFifth = (fifth + 1) % 12;
+                
+                return [newRoot, newThird, newFifth];
+            }
+
+            function findRootPosition(root, third, fifth) {
+                if (
+                    chordNames[third] !== undefined
+                    && chordNames[third][fifth] !== undefined
+                ) {
+                    return [root, third, fifth];
+                } else {
+                    return null;
+                }
+            }
+
+            function findFirstInversion(root, third, fifth) {
+                const newRoot = (root + third) % 12;
+                const newThird = (12 + fifth - third) % 12;
+                const newFifth = (12 - third) % 12;
+
+                if (
+                    chordNames[newThird] !== undefined
+                    && chordNames[newThird][newFifth] !== undefined
+                ) {
+                    return [newRoot, newThird, newFifth];
+                } else {
+                    return null;
+                }
+            }
+
+            function findSecondInversion(root, third, fifth) {
+                const newRoot = (root + fifth) % 12;
+                const newThird = (12 - fifth) % 12;
+                const newFifth = (12 + third - fifth) % 12;
+
+                if (
+                    chordNames[newThird] !== undefined
+                    && chordNames[newThird][newFifth] !== undefined
+                ) {
+                    return [newRoot, newThird, newFifth];
+                } else {
+                    return null;
+                }
+            }
+
+            function findInversions(root, third, fifth) {
+                const rootPosition = findRootPosition(root, third, fifth);
+                const firstInversion = findFirstInversion(root, third, fifth);
+                const secondInversation = findSecondInversion(root, third, fifth);
+
+                const inversions = [];
+                if (rootPosition) inversions.push(rootPosition);
+                if (firstInversion) inversions.push(firstInversion);
+                if (secondInversation) inversions.push(secondInversation);
+                return inversions;
+            }
+
+            function nameChord(root, third, fifth) {
+                return ` ${noteNames[root][0]}${chordNames[third][fifth]}`;
+            }
+
+            function spellChord(root, third, fifth) {
+                const rootNodes = noteNames[root][0];
+                const thirdNodes = noteNames[(root + third) % 12][0];
+                const fifthNodes = noteNames[(root + fifth) % 12][0];
+                return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
+            }
+
+            function getChordElement(root, third, fifth) {
+                if (root === null) return null;
+
+                const el = document.createElement("div");
+                el.classList.add("chord");
+                el.setAttribute("data-root", root);
+                el.setAttribute("data-third", third);
+                el.setAttribute("data-fifth", fifth);
+                el.innerHTML =
+                    `${nameChord(root, third, fifth)}`
+                    + ` (${spellChord(root, third, fifth)})`;
+                return el;
+            }
+
+            function getChordCollectionElement(root, third, fifth) {
+                if (root === null) return null;
+
+                const el = document.createElement("div");
+                el.classList.add("chord-collection");
+                const inversions = findInversions(root, third, fifth);
+                for (const inversion of inversions) {
+                    el.append(getChordElement(...inversion));
+                }
+                return el;
+            }
+
+            function getChordGraphElement(root, third, fifth) {
+                const table = document.createElement("div");
+                table.classList.add("chord-graph");
+                const topRow = document.createElement("div");
+                const middleRow = document.createElement("div");
+                const bottomRow = document.createElement("div");
+                topRow.append(
+                    document.createElement("div"),
+                    getChordCollectionElement(...raiseRoot(root, third, fifth)),
+                    getChordCollectionElement(...raiseThird(root, third, fifth))
+                );
+                middleRow.append(
+                    getChordCollectionElement(...lowerFifth(root, third, fifth)),
+                    getChordCollectionElement(root, third, fifth),
+                    getChordCollectionElement(...raiseFifth(root, third, fifth))
+                );
+                bottomRow.append(
+                    getChordCollectionElement(...lowerThird(root, third, fifth)),
+                    getChordCollectionElement(...lowerRoot(root, third, fifth)),
+                    document.createElement("div")
+                );
+                table.append(topRow, middleRow, bottomRow);
+                return table;
+            }
+
+            const chordHistory = [];
+
+            function createStaffChord(root, third, fifth) {
+                const keys = [
+                    `${staffNoteNames[root]}/4`,
+                    `${staffNoteNames[(root + third) % 12]}/${4 + Math.floor((root + third) / 12)}`,
+                    `${staffNoteNames[(root + fifth) % 12]}/${4 + Math.floor((root + fifth) / 12)}`
+                ];
+
+                const chord =  new StaveNote(
+                    {
+                        keys,
+                        duration: "w"
+                    }
+                );
+                
+                for (const index in keys) {
+                    if (keys[index].includes("#")) {
+                        chord.addModifier(new Accidental("#"), parseInt(index))
+                    }
+                }
+
+                return chord;
+            }
+            
+            function renderStaff(chords) {
+                const chordWidth = 100;
+                const clefWidth = 50;
+                const staffHeight = 100;
+                const margin = 10;
+
+                const notes = chords.map(chord => createStaffChord(...chord));
+                const notesWidth = notes.length * chordWidth;
+
+                const div = document.getElementById("staff");
+                div.textContent = '';
+
+                const renderer = new Renderer(div, Renderer.Backends.SVG);
+                renderer.resize(notesWidth + clefWidth + margin * 2, staffHeight * 3);
+                const context = renderer.getContext();
+
+                const stave = new Stave(margin, 0, notesWidth + clefWidth);
+                stave.addClef("treble");
+                stave.setContext(context).draw();
+                const stave2 = new Stave(margin, staffHeight, notesWidth + clefWidth);
+                stave2.setContext(context).draw();
+                const stave3 = new Stave(margin, staffHeight * 2, notesWidth + clefWidth);
+                stave3.setContext(context).draw();
+
+                const voice = new Voice({ num_beats: notes.length, beat_value: 1 });
+                voice.addTickables(notes);
+                new Formatter().joinVoices([voice]).format([voice], notesWidth);
+                
+                voice.draw(context, stave);
+                voice.draw(context, stave2);
+                voice.draw(context, stave3);
+            }
+
+            function renderChordGraph(root, third, fifth, target) {
+                stopPlayback();
+
+                const graph = getChordGraphElement(root, third, fifth);
+                const oldGraph = target.querySelector("& > .chord-graph");
+                if (oldGraph) {
+                    oldGraph.replaceWith(graph);
+                } else {
+                    target.append(graph);
+                }
+
+                const chords = graph.querySelectorAll(".chord");
+                for (const chord of chords) {
+                    chord.addEventListener(
+                        "click",
+                        () => {
+                            const root = parseInt(chord.getAttribute("data-root"));
+                            const third = parseInt(chord.getAttribute("data-third"));
+                            const fifth = parseInt(chord.getAttribute("data-fifth"));
+                            renderChordGraph(
+                                root,
+                                third,
+                                fifth,
+                                target
+                            );
+                            playChord(root, third, fifth);
+                        }
+                    );
+                }
+                
+                chordHistory.push([root, third, fifth]);
+
+                renderStaff(chordHistory);
+            }
+
+            let stopChord = () => {};
+
+            function playChord(root, third, fifth, onEnded) {
+                stopChord();
+
+                const real = new Float32Array(3);
+                const imag = new Float32Array(3);
+                const audioCtx = new AudioContext();
+
+                real[0] = 0;
+                imag[0] = 2;
+                real[1] = 1;
+                imag[1] = 0;
+                real[2] = 3;
+                imag[2] = 3;
+
+                const wave = audioCtx.createPeriodicWave(real, imag);
+
+                const pitch = 440 * Math.pow(2, (root - 9) / 12);
+                const freqs = [
+                    440 * Math.pow(2, (root - 9) / 12),
+                    440 * Math.pow(2, (root + third - 9) / 12),
+                    440 * Math.pow(2, (root + fifth - 9) / 12)
+                ];
+
+                const length = 2;
+
+                const sweepEnv = new GainNode(audioCtx);
+                sweepEnv.gain.cancelScheduledValues(0);
+                sweepEnv.gain.setValueAtTime(0, 0);
+                sweepEnv.gain.linearRampToValueAtTime(1 / freqs.length, 0.1);
+                sweepEnv.gain.linearRampToValueAtTime(0, length - 0.1);
+
+                const oscs = [];
+
+                for (const freq of freqs) {
+                    var osc = audioCtx.createOscillator();
+                    osc.setPeriodicWave(wave);
+                    osc.frequency.value = freq;
+                    osc.connect(sweepEnv).connect(audioCtx.destination);
+                    oscs.push(osc);
+                }
+
+                for (const osc of oscs) {
+                    osc.start();
+                    osc.stop(length);
+                }
+
+                oscs[0].onended = onEnded;
+
+                stopChord = function () {
+                    sweepEnv.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                }
+            }
+            
+            let stopPlayback = () => stopChord();
+            
+            function playHistory() {
+                stopPlayback();
+
+                let stopSignalSent = false;
+                let staffChords = document.querySelectorAll(".vf-stavenote");
+
+                stopPlayback = function () {
+                    stopSignalSent = true;
+                    stopChord();
+                    document.querySelector(".vf-stavenote.highlight")?.classList.remove("highlight");
+                }
+
+                function playIndex(index) {
+                    if (stopSignalSent == false) {
+                        document.querySelector(".vf-stavenote.highlight")?.classList.remove("highlight");
+
+                        if (index < chordHistory.length) {
+                            document.querySelectorAll(".vf-stavenote")[index]?.classList.add("highlight");
+                            playChord(
+                                ...chordHistory[index],
+                                () => playIndex(index + 1)
+                            );
+                        }
+                    }
+                }
+
+                playIndex(0);
+            }
+
+            function clearHistory() {
+                stopPlayback()
+                chordHistory.length = 0;
+
+                renderStaff(chordHistory);
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                renderChordGraph(0, thirds.maj, fifths.perf, document.getElementById("navigator"));
+
+                document.getElementById("play").addEventListener("click", playHistory);
+                document.getElementById("clear").addEventListener("click", clearHistory);
+                document.getElementById("stop").addEventListener("click", function () {
+                        stopPlayback();
+                });
+            });
+        </script>
+        <style>
+            @font-face {
+                font-family: "Bravura Text";
+                src: url("BravuraText.woff");
+            }
+
+            html {
+                font-family: sans-serif, "Bravura Text";
+                font-size: 1.5rem;
+                --graph-color: yellow;
+                --highlight-note: 12;
+            }
+
+            body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            h1 {
+                color: oklch(from var(--graph-color) 65% 20% h);
+            }
+
+            sup.min {
+                font-size: 125%;
+            }
+
+            .chord {
+                border: 0;
+                border-radius: 0.3rem;
+                padding: 0.2rem 0.3rem;
+                margin: 0.2rem;
+                line-height: 0.9em;
+                user-select: none;
+
+                &:hover {
+                    cursor: pointer;
+                    background: oklch(from var(--graph-color) 90% 10% h);
+                }
+            }
+
+            .chord-collection {
+                border: 0.1rem solid;
+                border-radius: 0.3rem;
+                border-color: oklch(from var(--graph-color) 80% 20% h);
+                background: oklch(from var(--graph-color) 98% 2% h);
+            }
+
+            .chord-graph {
+                display: table;
+                border-spacing: 0.5rem;
+
+                > * {
+                    display: table-row;
+                    > * {
+                        display: table-cell;
+                        vertical-align: middle;
+                        width: 10em;
+                        height: 6em;
+                    }
+                }
+            }
+
+            .buttons {
+                margin: 1rem 0;
+
+                button {
+                    border: 0.1rem solid;
+                    border-radius: 0.3rem;
+                    border-color: oklch(from var(--graph-color) 80% 20% h);
+                    background: oklch(from var(--graph-color) 98% 2% h);
+                    padding: 0.2rem 0.3rem;
+                    margin: 0 0.25rem;
+                    font-size: 0.8rem;
+                    
+                    &:hover {
+                        background: oklch(from var(--graph-color) 90% 10% h);
+                    }
+                    
+                    &:active {
+                        background: oklch(from var(--graph-color) 94% 10% h);
+                    }
+                }
+            }
+
+            .vf-stavenote.highlight {
+                fill: oklch(from var(--graph-color) 70% 30% h);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Chord Dancer</h1>
+        <div>chord picker here</div>
+        <div id="navigator"></div>
+        <div class="buttons">
+            <button type="button" id="undo">Undo</button>
+            <button type="button" id="redo">Redo</button>
+        </div>
+        <div id="staff"></div>
+        <div class="buttons">
+            <button type="button" id="play">Play</button>
+            <button type="button" id="stop">Stop</button>
+            <button type="button" id="clear">Clear</button>
+        </div>
+    </body>
+</html>
