@@ -4,24 +4,134 @@
         <title>Chord Dancer</title>
         <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
         <script>
-            const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+            const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, BarNote } = Vex.Flow;
+
+            // TODO: improve chord spelling; add chord symbols to staves
+
+            class ChordHistory {
+                #states = [];
+                #currentIndex = -1;
+
+                get #currentChords() {
+                    return this.#states[this.#currentIndex] ?? [];
+                }
+                
+                get latestChord() {
+                    return this.#currentChords[this.#currentChords.length - 1];
+                }
+
+                #pushState(chords) {
+                    this.#states = [
+                        ...this.#states.slice(0, this.#currentIndex + 1),
+                        chords
+                    ];
+
+                    this.#currentIndex = this.#states.length - 1;
+                }
+
+                push(chord) {
+                    this.#pushState([
+                        ...this.#currentChords,
+                        chord
+                    ]);
+                }
+
+                clear() {
+                    if (this.latestChord) this.#pushState([]);
+                }
+
+                #setOctave(octave) {
+                    this.#pushState([
+                        ...this.#currentChords.slice(0, -1),
+                        [
+                            ...this.latestChord.slice(0, -1),
+                            octave
+                        ]
+                    ]);
+                }
+
+                increaseOctave() {
+                    this.#setOctave(this.latestChord[3] + 1);
+                }
+
+                decreaseOctave() {
+                    this.#setOctave(this.latestChord[3] - 1);
+                }
+
+                get canUndo() {
+                    return this.#currentIndex > -1;
+                }
+
+                undo() {
+                    if (this.canUndo) {
+                        --this.#currentIndex;
+                    }
+                }
+
+                get canRedo() {
+                    return this.#currentIndex < this.#states.length - 1;
+                }
+
+                redo() {
+                    if (this.canRedo) {
+                        ++this.#currentIndex;
+                    }
+                }
+
+                static proxyHandler = {
+                    get(target, prop, receiver) {
+                        if (prop >= 0) {
+                            if (prop < target.#currentChords.length) {
+                                return [...target.#currentChords[prop]];
+                            }
+                            return undefined;
+                        }
+                        if (prop === "length") {
+                            return target.#currentChords.length;
+                        }
+                        if (prop === "map") {
+                            return function (...args) {
+                                return target.#currentChords.map(...args);
+                            };
+                        }
+
+                        const value = target[prop];
+                        if (value instanceof Function) {
+                            return function (...args) {
+                                return value.apply(this === receiver ? target : this, args);
+                            };
+                        }
+                        return value;
+                    },
+                    ownKeys(target) {
+                        if (target.#currentChords) {
+                            return Object.keys(target.#currentChords);
+                        } else {
+                            return [];
+                        }
+                    },
+                    getOwnPropertyDescriptor(target, prop) {
+                        return { enumerable: true, configurable: true, value: this.get(target, prop) };
+                    }
+                }
+            }
 
             const noteNames = [
-                ["C"],
-                ["C<sup>♯</sup>", "D<sup>♭</sup>"],
-                ["D"],
-                ["D<sup>♯</sup>", "E<sup>♭</sup>"],
-                ["E"],
-                ["F"],
-                ["F<sup>♯</sup>", "G<sup>♭</sup>"],
-                ["G"],
-                ["G<sup>♯</sup>", "A<sup>♭</sup>"],
-                ["A"],
-                ["A<sup>♯</sup>", "B<sup>♭</sup>"],
-                ["B"]
+                "C",
+                "C<sup>♯</sup>",
+                "D",
+                "D<sup>♯</sup>",
+                "E",
+                "F",
+                "F<sup>♯</sup>",
+                "G",
+                "G<sup>♯</sup>",
+                "A",
+                "A<sup>♯</sup>",
+                "B"
             ];
 
-            const staffNoteNames = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
+            const staveNoteNames = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
 
             const thirds = {
                 "sus2": 2,
@@ -170,43 +280,70 @@
             }
 
             function nameChord(root, third, fifth) {
-                return ` ${noteNames[root][0]}${chordNames[third][fifth]}`;
+                return ` ${noteNames[root]}${chordNames[third][fifth]}`;
             }
 
             function spellChord(root, third, fifth) {
-                const rootNodes = noteNames[root][0];
-                const thirdNodes = noteNames[(root + third) % 12][0];
-                const fifthNodes = noteNames[(root + fifth) % 12][0];
+                const rootNodes = noteNames[root];
+                const thirdNodes = noteNames[(root + third) % 12];
+                const fifthNodes = noteNames[(root + fifth) % 12];
                 return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
             }
 
-            function getChordElement(root, third, fifth) {
+            function getChordElement(root, third, fifth, octave) {
                 if (root === null) return null;
 
                 const el = document.createElement("div");
                 el.classList.add("chord");
-                el.setAttribute("data-root", root);
-                el.setAttribute("data-third", third);
-                el.setAttribute("data-fifth", fifth);
                 el.innerHTML =
                     `${nameChord(root, third, fifth)}`
                     + ` (${spellChord(root, third, fifth)})`;
+
+                el.addEventListener(
+                    "click",
+                    () => {
+                        push(
+                            root,
+                            third,
+                            fifth,
+                            octave
+                        );
+                    }
+                )
                 return el;
             }
 
-            function getChordCollectionElement(root, third, fifth) {
+            function getChordCollectionElement(root, third, fifth, octave) {
                 if (root === null) return null;
 
                 const el = document.createElement("div");
                 el.classList.add("chord-collection");
                 const inversions = findInversions(root, third, fifth);
                 for (const inversion of inversions) {
-                    el.append(getChordElement(...inversion));
+                    el.append(getChordElement(...inversion, octave));
                 }
                 return el;
             }
 
-            function getChordGraphElement(root, third, fifth) {
+            function getOctaveControlElement(octave) {
+                const el = document.createElement("div");
+
+                const upButton = document.createElement("button");
+                upButton.id = "octave-up";
+                upButton.innerText = "Octave Up";
+                upButton.addEventListener("click", increaseOctave);
+                el.appendChild(upButton);
+
+                const downButton = document.createElement("button");
+                downButton.id = "octave-down";
+                downButton.innerText = "Octave Down";
+                downButton.addEventListener("click", decreaseOctave);
+                el.appendChild(downButton);
+
+                return el;
+            }
+
+            function getChordGraphElement(root, third, fifth, octave) {
                 const table = document.createElement("div");
                 table.classList.add("chord-graph");
                 const topRow = document.createElement("div");
@@ -214,30 +351,41 @@
                 const bottomRow = document.createElement("div");
                 topRow.append(
                     document.createElement("div"),
-                    getChordCollectionElement(...raiseRoot(root, third, fifth)),
-                    getChordCollectionElement(...raiseThird(root, third, fifth))
+                    getChordCollectionElement(...raiseRoot(root, third, fifth), octave),
+                    getChordCollectionElement(...raiseThird(root, third, fifth), octave)
                 );
                 middleRow.append(
-                    getChordCollectionElement(...lowerFifth(root, third, fifth)),
-                    getChordCollectionElement(root, third, fifth),
-                    getChordCollectionElement(...raiseFifth(root, third, fifth))
+                    getChordCollectionElement(...lowerFifth(root, third, fifth), octave),
+                    getChordCollectionElement(root, third, fifth, octave),
+                    getChordCollectionElement(...raiseFifth(root, third, fifth), octave)
                 );
                 bottomRow.append(
-                    getChordCollectionElement(...lowerThird(root, third, fifth)),
-                    getChordCollectionElement(...lowerRoot(root, third, fifth)),
-                    document.createElement("div")
+                    getChordCollectionElement(...lowerThird(root, third, fifth), octave),
+                    getChordCollectionElement(...lowerRoot(root, third, fifth), octave),
+                    getOctaveControlElement(root, third, fifth, octave)
                 );
                 table.append(topRow, middleRow, bottomRow);
                 return table;
             }
 
-            const chordHistory = [];
+            function renderChordGraph(root, third, fifth, octave, target) {
+                const graph = getChordGraphElement(root, third, fifth, octave);
+                const oldGraph = target.querySelector("& > .chord-graph");
+                if (oldGraph) {
+                    oldGraph.replaceWith(graph);
+                } else {
+                    target.append(graph);
+                }
+            }
 
-            function createStaffChord(root, third, fifth) {
+            const chordHistory = new Proxy(new ChordHistory(), ChordHistory.proxyHandler);
+
+            function createStaveChord(root, third, fifth, octave) {
+                const position = 4 + octave;
                 const keys = [
-                    `${staffNoteNames[root]}/4`,
-                    `${staffNoteNames[(root + third) % 12]}/${4 + Math.floor((root + third) / 12)}`,
-                    `${staffNoteNames[(root + fifth) % 12]}/${4 + Math.floor((root + fifth) / 12)}`
+                    `${staveNoteNames[root]}/${position}`,
+                    `${staveNoteNames[(root + third) % 12]}/${position + Math.floor((root + third) / 12)}`,
+                    `${staveNoteNames[(root + fifth) % 12]}/${position + Math.floor((root + fifth) / 12)}`
                 ];
 
                 const chord =  new StaveNote(
@@ -255,83 +403,54 @@
 
                 return chord;
             }
+
+            const staveMetrics = {
+                chordWidth: 100,
+                clefWidth: 50,
+                staveHeight: 100,
+                margin: 10,
+                maxChords: 8
+            }
             
-            function renderStaff(chords) {
-                const chordWidth = 100;
-                const clefWidth = 50;
-                const staffHeight = 100;
-                const margin = 10;
+            function renderStaves(chords) {
+                const notes = chords.map(chord => createStaveChord(...chord)); 
+                const staveCount = Math.ceil(notes.length / staveMetrics.maxChords);
 
-                const notes = chords.map(chord => createStaffChord(...chord));
-                const notesWidth = notes.length * chordWidth;
-
-                const div = document.getElementById("staff");
+                const div = document.getElementById("staves");
                 div.textContent = '';
-
                 const renderer = new Renderer(div, Renderer.Backends.SVG);
-                renderer.resize(notesWidth + clefWidth + margin * 2, staffHeight * 3);
+                const canvasWidth = staveMetrics.maxChords * staveMetrics.chordWidth + staveMetrics.clefWidth + staveMetrics.margin * 2;
+                const canvasHeight = Math.max(1, staveCount) * staveMetrics.staveHeight;
+                renderer.resize(canvasWidth, canvasHeight);
                 const context = renderer.getContext();
 
-                const stave = new Stave(margin, 0, notesWidth + clefWidth);
-                stave.addClef("treble");
-                stave.setContext(context).draw();
-                const stave2 = new Stave(margin, staffHeight, notesWidth + clefWidth);
-                stave2.setContext(context).draw();
-                const stave3 = new Stave(margin, staffHeight * 2, notesWidth + clefWidth);
-                stave3.setContext(context).draw();
+                for (let staveIndex = 0; staveIndex < staveCount || staveIndex === 0; ++staveIndex) {
+                    const staveNotes = notes.slice(staveIndex * staveMetrics.maxChords, (staveIndex + 1) * staveMetrics.maxChords);
+                    renderStave(staveNotes, context, staveIndex * (staveMetrics.staveHeight));
+                }
 
-                const voice = new Voice({ num_beats: notes.length, beat_value: 1 });
-                voice.addTickables(notes);
-                new Formatter().joinVoices([voice]).format([voice], notesWidth);
-                
-                voice.draw(context, stave);
-                voice.draw(context, stave2);
-                voice.draw(context, stave3);
             }
 
-            function renderChordGraph(root, third, fifth, target) {
-                stopPlayback();
+            function renderStave(notes, context, top) {
+                const notesWidth = notes.length * staveMetrics.chordWidth;
 
-                const graph = getChordGraphElement(root, third, fifth);
-                const oldGraph = target.querySelector("& > .chord-graph");
-                if (oldGraph) {
-                    oldGraph.replaceWith(graph);
-                } else {
-                    target.append(graph);
-                }
+                const stave = new Stave(staveMetrics.margin, top, notesWidth + staveMetrics.clefWidth);
+                stave.addClef("treble");
+                stave.setContext(context).draw();
 
-                const chords = graph.querySelectorAll(".chord");
-                for (const chord of chords) {
-                    chord.addEventListener(
-                        "click",
-                        () => {
-                            const root = parseInt(chord.getAttribute("data-root"));
-                            const third = parseInt(chord.getAttribute("data-third"));
-                            const fifth = parseInt(chord.getAttribute("data-fifth"));
-                            renderChordGraph(
-                                root,
-                                third,
-                                fifth,
-                                target
-                            );
-                            playChord(root, third, fifth);
-                        }
-                    );
-                }
-                
-                chordHistory.push([root, third, fifth]);
+                const voice = new Voice({ num_beats: notes.length, beat_value: 1 });
+                const notesWithBarlines = [].concat(...notes.map(n => [n, new BarNote(),])).slice(0, -1);
+                voice.addTickables(notesWithBarlines);
+                new Formatter().joinVoices([voice]).format([voice], notesWidth);
 
-                renderStaff(chordHistory);
+                voice.draw(context, stave);
             }
 
             let stopChord = () => {};
 
-            function playChord(root, third, fifth, onEnded) {
-                stopChord();
-
+            function getWave(audioCtx) {
                 const real = new Float32Array(3);
                 const imag = new Float32Array(3);
-                const audioCtx = new AudioContext();
 
                 real[0] = 0;
                 imag[0] = 2;
@@ -340,13 +459,19 @@
                 real[2] = 3;
                 imag[2] = 3;
 
-                const wave = audioCtx.createPeriodicWave(real, imag);
+                return audioCtx.createPeriodicWave(real, imag);
+            };
 
-                const pitch = 440 * Math.pow(2, (root - 9) / 12);
+            function playChord(root, third, fifth, octave, onEnded) {
+                stopChord();
+
+                const audioCtx = new AudioContext();
+                const wave = getWave(audioCtx);
+
                 const freqs = [
-                    440 * Math.pow(2, (root - 9) / 12),
-                    440 * Math.pow(2, (root + third - 9) / 12),
-                    440 * Math.pow(2, (root + fifth - 9) / 12)
+                    440 * Math.pow(2, (root - 9 + octave * 12) / 12),
+                    440 * Math.pow(2, (root + third - 9 + octave * 12) / 12),
+                    440 * Math.pow(2, (root + fifth - 9 + octave * 12) / 12)
                 ];
 
                 const length = 2;
@@ -355,7 +480,7 @@
                 sweepEnv.gain.cancelScheduledValues(0);
                 sweepEnv.gain.setValueAtTime(0, 0);
                 sweepEnv.gain.linearRampToValueAtTime(1 / freqs.length, 0.1);
-                sweepEnv.gain.linearRampToValueAtTime(0, length - 0.1);
+                sweepEnv.gain.linearRampToValueAtTime(0, length);
 
                 const oscs = [];
 
@@ -375,7 +500,7 @@
                 oscs[0].onended = onEnded;
 
                 stopChord = function () {
-                    sweepEnv.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    sweepEnv.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
                 }
             }
             
@@ -385,7 +510,7 @@
                 stopPlayback();
 
                 let stopSignalSent = false;
-                let staffChords = document.querySelectorAll(".vf-stavenote");
+                let staveChords = document.querySelectorAll(".vf-stavenote");
 
                 stopPlayback = function () {
                     stopSignalSent = true;
@@ -403,6 +528,8 @@
                                 ...chordHistory[index],
                                 () => playIndex(index + 1)
                             );
+                        } else {
+                            stop();
                         }
                     }
                 }
@@ -410,21 +537,87 @@
                 playIndex(0);
             }
 
-            function clearHistory() {
-                stopPlayback()
-                chordHistory.length = 0;
+            function updateUI() {
+                stop();
 
-                renderStaff(chordHistory);
+                if (chordHistory.latestChord) {
+                    renderChordGraph(...chordHistory.latestChord, document.getElementById("navigator"));
+                    playChord(...chordHistory.latestChord);
+                    document.getElementById("octave-up").removeAttribute("disabled");
+                    document.getElementById("octave-down").removeAttribute("disabled");
+                    document.getElementById("clear").removeAttribute("disabled");
+                    document.getElementById("play").removeAttribute("disabled");
+                } else {
+                    document.getElementById("octave-up").setAttribute("disabled", "disabled");
+                    document.getElementById("octave-down").setAttribute("disabled", "disabled");
+                    document.getElementById("clear").setAttribute("disabled", "disabled");
+                    document.getElementById("play").setAttribute("disabled", "disabled");
+                }
+                
+                if (chordHistory.canUndo) {
+                    document.getElementById("undo").removeAttribute("disabled");
+                } else {
+                    document.getElementById("undo").setAttribute("disabled", "disabled");
+                }
+                
+                if (chordHistory.canRedo) {
+                    document.getElementById("redo").removeAttribute("disabled");
+                } else {
+                    document.getElementById("redo").setAttribute("disabled", "disabled");
+                }
+                
+                renderStaves(chordHistory);
+            }
+
+            function push(root, third, fifth, octave) {
+                chordHistory.push([root, third, fifth, octave]);
+                updateUI();
+            }
+
+            function play() {
+                playHistory();
+                document.getElementById("stop").removeAttribute("disabled");
+            }
+
+            function stop() {
+                stopPlayback();
+                document.getElementById("stop").setAttribute("disabled", "disabled");
+            }
+
+            function clear() {
+                chordHistory.clear();
+                updateUI();
+            }
+
+            function undo() {
+                chordHistory.undo();
+                updateUI();
+            }
+
+            function redo() {
+                chordHistory.redo();
+                updateUI();
+            }
+
+            function increaseOctave() {
+                chordHistory.increaseOctave();
+                updateUI();
+            }
+
+            function decreaseOctave() {
+                chordHistory.decreaseOctave();
+                updateUI();
             }
 
             document.addEventListener("DOMContentLoaded", () => {
-                renderChordGraph(0, thirds.maj, fifths.perf, document.getElementById("navigator"));
+                renderChordGraph(0, thirds.maj, fifths.perf, 0, document.getElementById("navigator"));
+                updateUI();
 
-                document.getElementById("play").addEventListener("click", playHistory);
-                document.getElementById("clear").addEventListener("click", clearHistory);
-                document.getElementById("stop").addEventListener("click", function () {
-                        stopPlayback();
-                });
+                document.getElementById("play").addEventListener("click", play);
+                document.getElementById("clear").addEventListener("click", clear);
+                document.getElementById("stop").addEventListener("click", stop);
+                document.getElementById("undo").addEventListener("click", undo);
+                document.getElementById("redo").addEventListener("click", redo);
             });
         </script>
         <style>
@@ -490,26 +683,31 @@
                 }
             }
 
+            button {
+                border: 0.1rem solid;
+                border-radius: 0.3rem;
+                border-color: oklch(from var(--graph-color) 80% 20% h);
+                background: oklch(from var(--graph-color) 98% 2% h);
+                padding: 0.2rem 0.3rem;
+                margin: 0 0.25rem;
+                font-size: 0.8rem;
+                
+                &:hover:not(:disabled, :active) {
+                    background: oklch(from var(--graph-color) 90% 10% h);
+                }
+                
+                &:active:not(:disabled)  {
+                    background: oklch(from var(--graph-color) 94% 10% h);
+                }
+
+                &:disabled() {
+                    border-color: oklch(from var(--graph-color) 90% 10% h);
+                    background: oklch(from var(--graph-color) 95% 2% h);
+                }
+            }
+
             .buttons {
                 margin: 1rem 0;
-
-                button {
-                    border: 0.1rem solid;
-                    border-radius: 0.3rem;
-                    border-color: oklch(from var(--graph-color) 80% 20% h);
-                    background: oklch(from var(--graph-color) 98% 2% h);
-                    padding: 0.2rem 0.3rem;
-                    margin: 0 0.25rem;
-                    font-size: 0.8rem;
-                    
-                    &:hover {
-                        background: oklch(from var(--graph-color) 90% 10% h);
-                    }
-                    
-                    &:active {
-                        background: oklch(from var(--graph-color) 94% 10% h);
-                    }
-                }
             }
 
             .vf-stavenote.highlight {
@@ -525,7 +723,7 @@
             <button type="button" id="undo">Undo</button>
             <button type="button" id="redo">Redo</button>
         </div>
-        <div id="staff"></div>
+        <div id="staves"></div>
         <div class="buttons">
             <button type="button" id="play">Play</button>
             <button type="button" id="stop">Stop</button>
