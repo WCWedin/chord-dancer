@@ -272,27 +272,26 @@
                     return undefined;
                 }
             }
-
-
-            function renderChordGraph(root, third, fifth, octave, target, chordHistory) {
-                function getChordGraphElement(root, third, fifth, octave, chordHistory) {
-                    function getChordCollectionElement(root, third, fifth, octave, chordHistory) {
-                        function getChordElement(root, third, fifth, octave, chordHistory) {
-                            function spellChord(root, third, fifth) {
+            
+            function spellChord(root, third, fifth) {
                                 const rootNodes = noteNames[root];
                                 const thirdNodes = noteNames[(root + third) % 12];
                                 const fifthNodes = noteNames[(root + fifth) % 12];
                                 return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
                             }
 
+
+            function renderChordGraph(root, third, fifth, octave, target, chordHistory) {
+                function getChordGraphElement(root, third, fifth, octave, chordHistory) {
+                    function getChordCollectionElement(root, third, fifth, octave, chordHistory) {
+                        function getChordElement(root, third, fifth, octave, chordHistory) {
                             if (root === null) return null;
 
                             const el = document.createElement("button");
                             el.setAttribute("type", "button");
                             el.classList.add("chord");
                             el.innerHTML =
-                                `${nameChord(root, third, fifth)}`
-                                + ` (${spellChord(root, third, fifth)})`;
+                                `${nameChord(root, third, fifth)} (${spellChord(root, third, fifth)})`;
 
                             el.addEventListener("click", () => {
                                 chordHistory.push([root, third, fifth, octave]);
@@ -366,7 +365,6 @@
 
                     function getOctaveControlElement(octave, chordHistory) {
                         const el = document.createElement("div");
-                        el.setAttribute("id", "octave-control");
 
                         const upButton = document.createElement("button");
                         upButton.id = "octave-up";
@@ -542,7 +540,8 @@
                     function setButtonName() {
                         const chordName = nameChord(root, third, fifth);
                         if (chordName) {
-                            jumpButton.innerText = `Jump to ${chordName}`;
+                            jumpButton.innerText =
+                                `${chordName} (${spellChord(root, third, fifth)})`;;
                             jumpButton.disabled = false;
                         } else {
                             jumpButton.innerText = "Chord undefined";
@@ -676,6 +675,11 @@
                     document.querySelector(".vf-stavenote.highlight")?.classList.remove("highlight");
                 });
 
+                function setInitialChord() {
+                    renderChordGraph(0, thirds.maj, fifths.perf, 0, document.getElementById("navigator"), chordHistory);
+                    renderChordPicker(0, thirds.maj, fifths.perf, 0, document.getElementById("picker"), chordHistory);
+                }
+
                 function updateUI() {
                     chordPlayer.stopPlayback();
                     document.getElementById("stop").disabled = true;
@@ -689,6 +693,7 @@
                         document.getElementById("octave-up").disabled = chordHistory.latestChord[3] >= 3;
                         document.getElementById("octave-down").disabled = chordHistory.latestChord[3] <= -3;
                     } else {
+                        setInitialChord();
                         document.getElementById("octave-up").disabled = true;
                         document.getElementById("octave-down").disabled = true;
                         document.getElementById("clear").disabled = true;
@@ -701,8 +706,6 @@
                     renderStaves(chordHistory);
                 }
 
-                renderChordGraph(0, thirds.maj, fifths.perf, 0, document.getElementById("navigator"), chordHistory);
-                renderChordPicker(0, thirds.maj, fifths.perf, 0, document.getElementById("picker"), chordHistory);
                 updateUI();
 
                 document.getElementById("clear").addEventListener("click", () => chordHistory.clear());
@@ -718,6 +721,8 @@
             html {
                 font-family: system-ui;
                 --theme-color: yellow;
+                --border-radius: 0.4em;
+                --chord-width: 11em;
             }
 
             body {
@@ -731,54 +736,63 @@
                 color: oklch(from var(--theme-color) 65% 20% h);
             }
 
-            .chord {
-                border: 0;
-                border-radius: 0.5rem;
-                padding: 0.3rem 0.5rem;
-                margin: 0.3rem 0;
-                line-height: 0.9em;
-                user-select: none;
-                width: 100%;
-                text-align: left;
-
-                &:hover {
-                    cursor: pointer;
-                    background: oklch(from var(--theme-color) 90% 10% h);
-                }
-            }
-
-            .chord-collection {
-                border: 0.15rem solid;
-                border-radius: 0.5rem;
-                border-color: oklch(from var(--theme-color) 80% 20% h);
-                background: oklch(from var(--theme-color) 98% 2% h);
-                padding: 0 0.3rem;
-            }
-
             .chord-graph {
                 display: table;
-                border-spacing: 0.75rem;
+                border-spacing: 0.75em;
 
                 > * {
                     display: table-row;
                     > * {
                         display: table-cell;
                         vertical-align: middle;
-                        width: 10em;
+                        width: var(--chord-width);
                         height: 6em;
+                    }
+                }
+
+                button {
+                    margin: 0.25em 0;
+                    width: 100%;
+                }
+
+                .chord-collection {
+                    border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
+                    border-radius: var(--border-radius);
+                    background: oklch(from var(--theme-color) 98% 2% h);
+                    padding: 0 0.25em;
+
+                    .chord {
+                        border: 0;
+                        border-radius: var(--border-radius);
+                        line-height: 0.9em;
+                        user-select: none;
+                        text-align: left;
+
+                        &:hover {
+                            cursor: pointer;
+                            background: oklch(from var(--theme-color) 90% 10% h);
+                        }
                     }
                 }
             }
 
+            .buttons, .chord-picker {
+                margin: 1em 0;
+            }
+
+            .chord-picker button {
+                width: var(--chord-width);
+                line-height: 1.2em;
+            }
+
             select, button {
                 color: oklch(from var(--theme-color) 30% 30% h);
-                border: 0.15rem solid;
-                border-radius: 0.5rem;
-                border-color: oklch(from var(--theme-color) 80% 20% h);
+                border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
+                border-radius: var(--border-radius);
                 background: oklch(from var(--theme-color) 98% 2% h);
-                padding: 0.3rem 0.5rem;
-                margin: 0 0.3rem;
-                font-size: 1.2rem;
+                padding: 0.25em 0.4em;
+                margin: 0 0.4em;
+                font-size: 1em;
                 
                 &:hover:not(:disabled, :active) {
                     background: oklch(from var(--theme-color) 90% 10% h);
@@ -793,19 +807,6 @@
                     border-color: oklch(from var(--theme-color) 90% 10% h);
                     background: oklch(from var(--theme-color) 95% 2% h);
                 }
-
-                .chord-picker & {
-                    margin: 0 0.5rem 1rem;
-                }
-            }
-
-            #octave-control button {
-                margin: 0.3rem 0;
-                width: 100%;
-            }
-
-            .buttons {
-                margin: 1rem 0;
             }
 
             .vf-stavenote.highlight {
