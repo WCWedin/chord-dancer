@@ -264,21 +264,125 @@
 
             const staveNoteNames = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
 
-            function nameChord(root, third, fifth) {
-                const chordName = chordNames[third][fifth];
-                if (chordName) {
-                    return ` ${noteNames[root]}${chordName}`;
-                } else {
-                    return undefined;
-                }
-            }
+
+            const chordHelper = Object.freeze({
+                nameChord: function(root, third, fifth) {
+                    const chordName = chordNames[third][fifth];
+                    if (chordName) {
+                        return ` ${noteNames[root]}${chordName}`;
+                    } else {
+                        return undefined;
+                    }
+                },
             
-            function spellChord(root, third, fifth) {
-                                const rootNodes = noteNames[root];
-                                const thirdNodes = noteNames[(root + third) % 12];
-                                const fifthNodes = noteNames[(root + fifth) % 12];
-                                return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
-                            }
+                spellChord: function(root, third, fifth) {
+                    const rootNodes = noteNames[root];
+                    const thirdNodes = noteNames[(root + third) % 12];
+                    const fifthNodes = noteNames[(root + fifth) % 12];
+                    return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
+                },
+
+                lowerRoot: function(root, third, fifth) {
+                    const newRoot = (root - 1 + 12) % 12;
+                    const newThird = (third + 1) % 12;
+                    const newFifth = (fifth + 1) % 12;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                raiseRoot: function(root, third, fifth) {
+                    const newRoot = (root + 1) % 12;
+                    const newThird = (third - 1 + 12) % 12;
+                    const newFifth = (fifth - 1 + 12) % 12;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                lowerThird: function(root, third, fifth) {
+                    const newRoot = root;
+                    const newThird = (third - 1 + 12) % 12;
+                    const newFifth = fifth;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                raiseThird: function(root, third, fifth) {
+                    const newRoot = root;
+                    const newThird = (third + 1) % 12;
+                    const newFifth = fifth;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                lowerFifth: function(root, third, fifth) {
+                    const newRoot = root;
+                    const newThird = third;
+                    const newFifth = (fifth - 1 + 12) % 12;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                raiseFifth: function(root, third, fifth) {
+                    const newRoot = root;
+                    const newThird = third;
+                    const newFifth = (fifth + 1) % 12;
+                    
+                    return [newRoot, newThird, newFifth];
+                },
+                
+                findRootPosition: function(root, third, fifth) {
+                    if (
+                        chordNames[third] !== undefined
+                        && chordNames[third][fifth] !== undefined
+                    ) {
+                        return [root, third, fifth];
+                    } else {
+                        return null;
+                    }
+                },
+
+                findFirstInversion: function(root, third, fifth) {
+                    const newRoot = (root + third) % 12;
+                    const newThird = (12 + fifth - third) % 12;
+                    const newFifth = (12 - third) % 12;
+
+                    if (
+                        chordNames[newThird] !== undefined
+                        && chordNames[newThird][newFifth] !== undefined
+                    ) {
+                        return [newRoot, newThird, newFifth];
+                    } else {
+                        return null;
+                    }
+                },
+
+                findSecondInversion: function(root, third, fifth) {
+                    const newRoot = (root + fifth) % 12;
+                    const newThird = (12 - fifth) % 12;
+                    const newFifth = (12 + third - fifth) % 12;
+
+                    if (
+                        chordNames[newThird] !== undefined
+                        && chordNames[newThird][newFifth] !== undefined
+                    ) {
+                        return [newRoot, newThird, newFifth];
+                    } else {
+                        return null;
+                    }
+                },
+
+                findInversions: function(root, third, fifth) {
+                    const rootPosition = chordHelper.findRootPosition(root, third, fifth);
+                    const firstInversion = chordHelper.findFirstInversion(root, third, fifth);
+                    const secondInversation = chordHelper.findSecondInversion(root, third, fifth);
+
+                    const inversions = [];
+                    if (rootPosition) inversions.push(rootPosition);
+                    if (firstInversion) inversions.push(firstInversion);
+                    if (secondInversation) inversions.push(secondInversation);
+                    return inversions;
+                }
+            });
 
 
             function renderChordGraph(root, third, fifth, octave, target, chordHistory) {
@@ -291,7 +395,7 @@
                             el.setAttribute("type", "button");
                             el.classList.add("chord");
                             el.innerHTML =
-                                `${nameChord(root, third, fifth)} (${spellChord(root, third, fifth)})`;
+                                `${chordHelper.nameChord(root, third, fifth)} (${chordHelper.spellChord(root, third, fifth)})`;
 
                             el.addEventListener("click", () => {
                                 chordHistory.push([root, third, fifth, octave]);
@@ -299,64 +403,11 @@
                             return el;
                         }
 
-                        function findInversions(root, third, fifth) {
-                            function findRootPosition(root, third, fifth) {
-                                if (
-                                    chordNames[third] !== undefined
-                                    && chordNames[third][fifth] !== undefined
-                                ) {
-                                    return [root, third, fifth];
-                                } else {
-                                    return null;
-                                }
-                            }
-
-                            function findFirstInversion(root, third, fifth) {
-                                const newRoot = (root + third) % 12;
-                                const newThird = (12 + fifth - third) % 12;
-                                const newFifth = (12 - third) % 12;
-
-                                if (
-                                    chordNames[newThird] !== undefined
-                                    && chordNames[newThird][newFifth] !== undefined
-                                ) {
-                                    return [newRoot, newThird, newFifth];
-                                } else {
-                                    return null;
-                                }
-                            }
-
-                            function findSecondInversion(root, third, fifth) {
-                                const newRoot = (root + fifth) % 12;
-                                const newThird = (12 - fifth) % 12;
-                                const newFifth = (12 + third - fifth) % 12;
-
-                                if (
-                                    chordNames[newThird] !== undefined
-                                    && chordNames[newThird][newFifth] !== undefined
-                                ) {
-                                    return [newRoot, newThird, newFifth];
-                                } else {
-                                    return null;
-                                }
-                            }
-
-                            const rootPosition = findRootPosition(root, third, fifth);
-                            const firstInversion = findFirstInversion(root, third, fifth);
-                            const secondInversation = findSecondInversion(root, third, fifth);
-
-                            const inversions = [];
-                            if (rootPosition) inversions.push(rootPosition);
-                            if (firstInversion) inversions.push(firstInversion);
-                            if (secondInversation) inversions.push(secondInversation);
-                            return inversions;
-                        }
-
                         if (root === null) return null;
 
                         const el = document.createElement("div");
                         el.classList.add("chord-collection");
-                        const inversions = findInversions(root, third, fifth);
+                        const inversions = chordHelper.findInversions(root, third, fifth);
                         for (const inversion of inversions) {
                             el.append(getChordElement(...inversion, octave, chordHistory));
                         }
@@ -381,54 +432,6 @@
                         return el;
                     }
 
-                    function lowerRoot(root, third, fifth) {
-                        const newRoot = (root - 1 + 12) % 12;
-                        const newThird = (third + 1) % 12;
-                        const newFifth = (fifth + 1) % 12;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-                    
-                    function raiseRoot(root, third, fifth) {
-                        const newRoot = (root + 1) % 12;
-                        const newThird = (third - 1 + 12) % 12;
-                        const newFifth = (fifth - 1 + 12) % 12;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-                    
-                    function lowerThird(root, third, fifth) {
-                        const newRoot = root;
-                        const newThird = (third - 1 + 12) % 12;
-                        const newFifth = fifth;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-                    
-                    function raiseThird(root, third, fifth) {
-                        const newRoot = root;
-                        const newThird = (third + 1) % 12;
-                        const newFifth = fifth;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-                    
-                    function lowerFifth(root, third, fifth) {
-                        const newRoot = root;
-                        const newThird = third;
-                        const newFifth = (fifth - 1 + 12) % 12;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-                    
-                    function raiseFifth(root, third, fifth) {
-                        const newRoot = root;
-                        const newThird = third;
-                        const newFifth = (fifth + 1) % 12;
-                        
-                        return [newRoot, newThird, newFifth];
-                    }
-
                     const table = document.createElement("div");
                     table.classList.add("chord-graph");
                     const topRow = document.createElement("div");
@@ -436,17 +439,17 @@
                     const bottomRow = document.createElement("div");
                     topRow.append(
                         document.createElement("div"),
-                        getChordCollectionElement(...raiseRoot(root, third, fifth), octave, chordHistory),
-                        getChordCollectionElement(...raiseThird(root, third, fifth), octave, chordHistory)
+                        getChordCollectionElement(...chordHelper.raiseRoot(root, third, fifth), octave, chordHistory),
+                        getChordCollectionElement(...chordHelper.raiseThird(root, third, fifth), octave, chordHistory)
                     );
                     middleRow.append(
-                        getChordCollectionElement(...lowerFifth(root, third, fifth), octave, chordHistory),
+                        getChordCollectionElement(...chordHelper.lowerFifth(root, third, fifth), octave, chordHistory),
                         getChordCollectionElement(root, third, fifth, octave, chordHistory),
-                        getChordCollectionElement(...raiseFifth(root, third, fifth), octave, chordHistory)
+                        getChordCollectionElement(...chordHelper.raiseFifth(root, third, fifth), octave, chordHistory)
                     );
                     bottomRow.append(
-                        getChordCollectionElement(...lowerThird(root, third, fifth), octave, chordHistory),
-                        getChordCollectionElement(...lowerRoot(root, third, fifth), octave, chordHistory),
+                        getChordCollectionElement(...chordHelper.lowerThird(root, third, fifth), octave, chordHistory),
+                        getChordCollectionElement(...chordHelper.lowerRoot(root, third, fifth), octave, chordHistory),
                         getOctaveControlElement(octave, chordHistory)
                     );
                     table.append(topRow, middleRow, bottomRow);
@@ -538,10 +541,10 @@
                     const jumpButton = document.createElement("button");
                     jumpButton.setAttribute("id", "picker-submit");
                     function setButtonName() {
-                        const chordName = nameChord(root, third, fifth);
+                        const chordName = chordHelper.nameChord(root, third, fifth);
                         if (chordName) {
                             jumpButton.innerText =
-                                `${chordName} (${spellChord(root, third, fifth)})`;;
+                                `${chordName} (${chordHelper.spellChord(root, third, fifth)})`;;
                             jumpButton.disabled = false;
                         } else {
                             jumpButton.innerText = "Chord undefined";
@@ -593,18 +596,18 @@
             }
             
                 function createStaveChordName(root, third, fifth) {
-                return new TextNote({
-                    text: nameChord(root, third, fifth),
-                    duration: "w",
-                    font: {
-                        family: "system-ui",
-                        size: 15,
-                        weight: ""
-                    },
-                    justification: TextNote.Justification.LEFT,
-                    line: 0
-                });
-            }
+                    return new TextNote({
+                        text: chordHelper.nameChord(root, third, fifth),
+                        duration: "w",
+                        font: {
+                            family: "system-ui",
+                            size: 15,
+                            weight: ""
+                        },
+                        justification: TextNote.Justification.LEFT,
+                        line: 0
+                    });
+                }
             
                 function renderStave(notes, chordNames, context, top) {
                     const notesWidth = notes.length * staveMetrics.chordWidth;
