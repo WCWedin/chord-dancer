@@ -594,7 +594,7 @@
                 }
             }
 
-            function renderStaves(chords) {
+            function renderStaves(chords, target) {
                 function createStaveChord(root, third, fifth, octave) {
                     const position = 4 + octave;
                     const keys = [
@@ -663,9 +663,8 @@
                 const chordNames = chords.map(chord => createStaveChordName(...chord));
                 const staveCount = Math.ceil(notes.length / staveMetrics.maxChords);
 
-                const div = document.getElementById("staves");
-                div.textContent = '';
-                const renderer = new Renderer(div, Renderer.Backends.SVG);
+                target.textContent = '';
+                const renderer = new Renderer(target, Renderer.Backends.SVG);
                 const canvasWidth = staveMetrics.maxChords * staveMetrics.chordWidth + staveMetrics.clefWidth + staveMetrics.horizontalMargin * 2;
                 const canvasHeight = staveMetrics.topMargin + Math.max(1, staveCount) * staveMetrics.staveHeight;
                 renderer.resize(canvasWidth, canvasHeight);
@@ -730,7 +729,7 @@
                     document.getElementById("undo").disabled = !chordHistory.canUndo;
                     document.getElementById("redo").disabled = !chordHistory.canRedo;
                     
-                    renderStaves(chordHistory);
+                    renderStaves(chordHistory, document.getElementById("staves"));
                 }
 
                 updateUI();
@@ -795,7 +794,6 @@
                         border: 0;
                         border-radius: var(--border-radius);
                         line-height: 0.9em;
-                        user-select: none;
                         text-align: left;
 
                         &:hover {
