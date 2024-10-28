@@ -371,17 +371,56 @@
                 }
             };
 
+            class StaveHelper {
+                static metrics = Object.freeze({
+                    chordWidth: 150,
+                    clefWidth: 50,
+                    staveHeight: 130,
+                    topMargin: 30,
+                    horizontalMargin: 20,
+                    maxChords: 6
+                });
 
-            const staveMetrics = {
-                chordWidth: 150,
-                clefWidth: 50,
-                staveHeight: 130,
-                topMargin: 30,
-                horizontalMargin: 20,
-                maxChords: 6
-            };
+                static noteNames = Object.freeze(["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"]);
 
-            const staveNoteNames = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
+                static createChord(root, third, fifth, octave) {
+                    const position = 4 + octave;
+                    const keys = [
+                        `${StaveHelper.noteNames[root]}/${position}`,
+                        `${StaveHelper.noteNames[(root + third) % 12]}/${position + Math.floor((root + third) / 12)}`,
+                        `${StaveHelper.noteNames[(root + fifth) % 12]}/${position + Math.floor((root + fifth) / 12)}`
+                    ];
+
+                    const chord =  new StaveNote(
+                        {
+                            keys,
+                            duration: "w"
+                        }
+                    );
+
+                    for (const index in keys) {
+                        if (keys[index].includes("#")) {
+                            chord.addModifier(new Accidental("#"), parseInt(index))
+                        }
+                    }
+
+                    return chord;
+                }
+
+                static nameChord(root, third, fifth) {
+                    return new TextNote({
+                        text: ChordHelper.nameChord(root, third, fifth),
+                        duration: "w",
+                        font: {
+                            family: "system-ui",
+                            size: 15,
+                            weight: ""
+                        },
+                        justification: TextNote.Justification.LEFT,
+                        line: 0
+                    });
+                }
+            }
 
 
             function renderChordGraph(root, third, fifth, octave, target) {
@@ -393,8 +432,7 @@
                             const el = document.createElement("button");
                             el.setAttribute("type", "button");
                             el.classList.add("chord");
-                            el.innerHTML =
-                                `${ChordHelper.nameChord(root, third, fifth)} (${ChordHelper.spellChord(root, third, fifth)})`;
+                            el.innerText = `${ChordHelper.nameChord(root, third, fifth)} (${ChordHelper.spellChord(root, third, fifth)})`;
 
                             el.addEventListener("click", () => {
                                 el.dispatchEvent(new CustomEvent(
@@ -595,48 +633,10 @@
             }
 
             function renderStaves(chords, target) {
-                function createStaveChord(root, third, fifth, octave) {
-                    const position = 4 + octave;
-                    const keys = [
-                        `${staveNoteNames[root]}/${position}`,
-                        `${staveNoteNames[(root + third) % 12]}/${position + Math.floor((root + third) / 12)}`,
-                        `${staveNoteNames[(root + fifth) % 12]}/${position + Math.floor((root + fifth) / 12)}`
-                    ];
-
-                    const chord =  new StaveNote(
-                        {
-                            keys,
-                            duration: "w"
-                        }
-                    );
-                    
-                    for (const index in keys) {
-                        if (keys[index].includes("#")) {
-                            chord.addModifier(new Accidental("#"), parseInt(index))
-                        }
-                    }
-
-                    return chord;
-                }
-            
-                function createStaveChordName(root, third, fifth) {
-                    return new TextNote({
-                        text: ChordHelper.nameChord(root, third, fifth),
-                        duration: "w",
-                        font: {
-                            family: "system-ui",
-                            size: 15,
-                            weight: ""
-                        },
-                        justification: TextNote.Justification.LEFT,
-                        line: 0
-                    });
-                }
-            
                 function renderStave(notes, chordNames, context, top) {
-                    const notesWidth = notes.length * staveMetrics.chordWidth;
+                    const notesWidth = notes.length * StaveHelper.metrics.chordWidth;
 
-                    const stave = new Stave(staveMetrics.horizontalMargin, top, notesWidth + staveMetrics.clefWidth);
+                    const stave = new Stave(StaveHelper.metrics.horizontalMargin, top, notesWidth + StaveHelper.metrics.clefWidth);
                     stave.addClef("treble");
                     stave.setContext(context);
 
@@ -659,21 +659,21 @@
                     chordNameVoice.draw();
                 }
 
-                const notes = chords.map(chord => createStaveChord(...chord));
-                const chordNames = chords.map(chord => createStaveChordName(...chord));
-                const staveCount = Math.ceil(notes.length / staveMetrics.maxChords);
+                const notes = chords.map(chord => StaveHelper.createChord(...chord));
+                const chordNames = chords.map(chord => StaveHelper.nameChord(...chord));
+                const staveCount = Math.ceil(notes.length / StaveHelper.metrics.maxChords);
 
                 target.textContent = '';
                 const renderer = new Renderer(target, Renderer.Backends.SVG);
-                const canvasWidth = staveMetrics.maxChords * staveMetrics.chordWidth + staveMetrics.clefWidth + staveMetrics.horizontalMargin * 2;
-                const canvasHeight = staveMetrics.topMargin + Math.max(1, staveCount) * staveMetrics.staveHeight;
+                const canvasWidth = StaveHelper.metrics.maxChords * StaveHelper.metrics.chordWidth + StaveHelper.metrics.clefWidth + StaveHelper.metrics.horizontalMargin * 2;
+                const canvasHeight = StaveHelper.metrics.topMargin + Math.max(1, staveCount) * StaveHelper.metrics.staveHeight;
                 renderer.resize(canvasWidth, canvasHeight);
                 const context = renderer.getContext();
 
                 for (let staveIndex = 0; staveIndex < staveCount || staveIndex === 0; ++staveIndex) {
-                    const staveNotes = notes.slice(staveIndex * staveMetrics.maxChords, (staveIndex + 1) * staveMetrics.maxChords);
-                    const staveChordNames = chordNames.slice(staveIndex * staveMetrics.maxChords, (staveIndex + 1) * staveMetrics.maxChords);
-                    renderStave(staveNotes, staveChordNames, context, staveMetrics.topMargin + staveIndex * (staveMetrics.staveHeight));
+                    const staveNotes = notes.slice(staveIndex * StaveHelper.metrics.maxChords, (staveIndex + 1) * StaveHelper.metrics.maxChords);
+                    const staveChordNames = chordNames.slice(staveIndex * StaveHelper.metrics.maxChords, (staveIndex + 1) * StaveHelper.metrics.maxChords);
+                    renderStave(staveNotes, staveChordNames, context, StaveHelper.metrics.topMargin + staveIndex * (StaveHelper.metrics.staveHeight));
                 }
             }
 
