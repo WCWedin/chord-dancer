@@ -15,6 +15,7 @@
                 TextNote
             } = Vex.Flow;
 
+            
             class ChordHistory extends EventTarget {
                 #states = [];
                 #currentIndex = -1;
@@ -522,116 +523,6 @@
                 }
             }
 
-            function renderChordPicker(root, third, fifth, octave, target) {
-                function getChordPickerElement(root, third, fifth, octave) {
-                    const picker = document.createElement("div");
-                    picker.classList.add("chord-picker");
-
-                    const rootPicker = document.createElement("select");
-                    rootPicker.setAttribute("id", "picker-root");
-                    for (const index in ChordHelper.noteNames) {
-                        const option = document.createElement("option");
-                        option.setAttribute("value", index);
-                        option.innerText = ChordHelper.noteNames[index];
-                        if (parseInt(index) === root) {
-                            option.setAttribute("selected", "selected");
-                        }
-                        rootPicker.appendChild(option);
-                        rootPicker.addEventListener("change", () => {
-                            root = parseInt(rootPicker.value);
-                            setButtonName();
-                        });
-                    }
-                    picker.appendChild(rootPicker);
-
-                    const thirdPicker = document.createElement("select");
-                    thirdPicker.setAttribute("id", "picker-third");
-                    for (const index in ChordHelper.thirdNames) {
-                        const option = document.createElement("option");
-                        option.setAttribute("value", index);
-                        option.innerText = ChordHelper.thirdNames[index];
-                        if (parseInt(index) === third) {
-                            option.setAttribute("selected", "selected");
-                        }
-                        thirdPicker.appendChild(option);
-                        thirdPicker.addEventListener("change", () => {
-                            third = parseInt(thirdPicker.value);
-                            setButtonName();
-                        });
-                    }
-                    picker.appendChild(thirdPicker);
-
-                    const fifthPicker = document.createElement("select");
-                    fifthPicker.setAttribute("id", "picker-fifth");
-                    for (const index in ChordHelper.fifthNames) {
-                        const option = document.createElement("option");
-                        option.setAttribute("value", index);
-                        option.innerText = ChordHelper.fifthNames[index];
-                        if (parseInt(index) === fifth) {
-                            option.setAttribute("selected", "selected");
-                        }
-                        fifthPicker.appendChild(option);
-                        fifthPicker.addEventListener("change", () => {
-                            fifth = parseInt(fifthPicker.value);
-                            setButtonName();
-                        });
-                    }
-                    picker.appendChild(fifthPicker);
-
-                    const octavePicker = document.createElement("select");
-                    octavePicker.setAttribute("id", "picker-octave");
-                    for (const name of ChordHelper.octaveNames.toReversed()) {
-                        const index = parseInt(name);
-                        const option = document.createElement("option");
-                        option.setAttribute("value", index);
-                        option.innerText = name;
-                        if (index === octave) {
-                            option.setAttribute("selected", "selected");
-                        }
-                        octavePicker.appendChild(option);
-                        octavePicker.addEventListener("change", () => {
-                            octave = parseInt(octavePicker.value);
-                        });
-                    }
-                    picker.appendChild(octavePicker);
-
-                    const button = document.createElement("button");
-                    button.setAttribute("id", "picker-submit");
-                    function setButtonName() {
-                        const chordName = ChordHelper.nameChord(root, third, fifth);
-                        if (chordName) {
-                            button.innerText =
-                                `${chordName} (${ChordHelper.spellChord(root, third, fifth)})`;;
-                            button.disabled = false;
-                        } else {
-                            button.innerText = "Chord undefined";
-                            button.disabled = true;
-                        }
-                    }
-                    button.addEventListener("click", () => {
-                        button.dispatchEvent(new CustomEvent(
-                            "chordPushed",
-                            {
-                                bubbles: true,
-                                detail: [ root, third, fifth, octave ]
-                            }
-                        ));
-                    });
-                    setButtonName();
-                    picker.appendChild(button);
-
-                    return picker;
-                }
-
-                const picker = getChordPickerElement(root, third, fifth, octave);
-                const oldPicker = target.querySelector("& > .chord-picker");
-                if (oldPicker) {
-                    oldPicker.replaceWith(picker);
-                } else {
-                    target.append(picker);
-                }
-            }
-
             function renderStaves(chords, target) {
                 function renderStave(notes, chordNames, context, top) {
                     const notesWidth = notes.length * StaveHelper.metrics.chordWidth;
@@ -678,6 +569,126 @@
             }
 
 
+            customElements.define("chord-picker", class extends HTMLElement {
+                rootPicker;
+                thirdPicker;
+                fifthPicker;
+                octavePicker;
+                button;
+
+                static observedAttributes = ["root", "third", "fifth", "octave"];
+                
+                constructor() {
+                    super();
+
+                    const picker = this.attachShadow({ mode: "open" });
+
+                    {
+                        this.rootPicker = document.createElement("select");
+                        this.rootPicker.setAttribute("part", "select");
+                        this.rootPicker.addEventListener("change", () => this.updateButton());
+
+                        for (const index in ChordHelper.noteNames) {
+                            const option = document.createElement("option");
+                            option.setAttribute("value", index);
+                            option.innerText = ChordHelper.noteNames[index];
+                            this.rootPicker.appendChild(option);
+                        }
+
+                        picker.appendChild(this.rootPicker);
+                    }
+ 
+                    {
+                        this.thirdPicker = document.createElement("select");
+                        this.thirdPicker.setAttribute("part", "select");
+                        this.thirdPicker.addEventListener("change", () => this.updateButton());
+
+                        for (const index in ChordHelper.thirdNames) {
+                            const option = document.createElement("option");
+                            option.setAttribute("value", index);
+                            option.innerText = ChordHelper.thirdNames[index];
+                            this.thirdPicker.appendChild(option);
+                        }
+
+                        picker.appendChild(this.thirdPicker);
+                    }
+
+                    {
+                        this.fifthPicker = document.createElement("select");
+                        this.fifthPicker.setAttribute("part", "select");
+                        this.fifthPicker.addEventListener("change", () => this.updateButton());
+
+                        for (const index in ChordHelper.fifthNames) {
+                            const option = document.createElement("option");
+                            option.setAttribute("value", index);
+                            option.innerText = ChordHelper.fifthNames[index];
+                            this.fifthPicker.appendChild(option);
+                            
+                        }
+
+                        picker.appendChild(this.fifthPicker);
+                    }
+
+                    {
+                        this.octavePicker = document.createElement("select");
+                        this.octavePicker.setAttribute("part", "select");
+                        for (const name of ChordHelper.octaveNames.toReversed()) {
+                            const index = parseInt(name);
+                            const option = document.createElement("option");
+                            option.setAttribute("value", index);
+                            option.innerText = name;
+                            this.octavePicker.appendChild(option);
+                        }
+                        picker.appendChild(this.octavePicker);
+                    }
+
+                    {
+                        this.button = document.createElement("button");
+                        this.button.setAttribute("part", "button");
+                        this.button.addEventListener("click", () => {
+                            this.dispatchEvent(new CustomEvent(
+                                "chordPushed",
+                                {
+                                    bubbles: true,
+                                    detail: [
+                                        parseInt(this.rootPicker.value),
+                                        parseInt(this.thirdPicker.value),
+                                        parseInt(this.fifthPicker.value),
+                                        parseInt(this.octavePicker.value)
+                                    ]
+                                }
+                            ));
+                        });
+                        picker.appendChild(this.button);
+                    }
+                }
+
+                updateButton() {
+                    const root = this.rootPicker.value;
+                    const third = this.thirdPicker.value;
+                    const fifth = this.fifthPicker.value;
+                    const octave = this.octavePicker.value;
+                    const chordName = ChordHelper.nameChord(root, third, fifth);
+                    if (chordName) {
+                        this.button.innerText = `${chordName} (${ChordHelper.spellChord(root, third, fifth)})`;
+                        this.button.disabled = false;
+                    } else {
+                        this.button.innerText = "Chord undefined";
+                        this.button.disabled = true;
+                    }
+                }
+
+
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (name === "root") this.rootPicker.value = newValue;
+                    if (name === "third") this.thirdPicker.value = newValue;
+                    if (name === "fifth") this.fifthPicker.value = newValue;
+                    if (name === "octave") this.octavePicker.value = newValue;
+                    this.updateButton();
+                }
+            });
+
+
             document.addEventListener("DOMContentLoaded", () => {
                 const chordHistory = new ChordHistory();
                 const chordPlayer = new ChordPlayer();
@@ -703,7 +714,11 @@
 
                 function setInitialChord() {
                     renderChordGraph(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0, document.getElementById("navigator"));
-                    renderChordPicker(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0, document.getElementById("picker"));
+                    const chordPicker = document.querySelector("chord-picker")
+                    chordPicker.setAttribute("root", 0);
+                    chordPicker.setAttribute("third", ChordHelper.thirds.maj);
+                    chordPicker.setAttribute("fifth", ChordHelper.fifths.perf);
+                    chordPicker.setAttribute("octave", 0);
                 }
 
                 function updateUI() {
@@ -712,7 +727,13 @@
 
                     if (chordHistory.latestChord) {
                         renderChordGraph(...chordHistory.latestChord, document.getElementById("navigator"));
-                        renderChordPicker(...chordHistory.latestChord, document.getElementById("picker"));
+                        
+                        const chordPicker = document.querySelector("chord-picker")
+                        chordPicker.setAttribute("root", chordHistory.latestChord[0]);
+                        chordPicker.setAttribute("third", chordHistory.latestChord[1]);
+                        chordPicker.setAttribute("fifth", chordHistory.latestChord[2]);
+                        chordPicker.setAttribute("octave", chordHistory.latestChord[3]);
+
                         chordPlayer.playChord(...chordHistory.latestChord);
                         document.getElementById("clear").disabled = false;
                         document.getElementById("play").disabled = false;
@@ -804,16 +825,17 @@
                 }
             }
 
-            .buttons, .chord-picker {
+            .buttons, chord-picker {
                 margin: 1em 0;
             }
 
-            .chord-picker button {
+            chord-picker::part(button) {
                 width: var(--chord-width);
                 line-height: 1.2em;
             }
 
-            select, button {
+            button,
+            chord-picker::part(select), chord-picker::part(button) {
                 color: oklch(from var(--theme-color) 30% 30% h);
                 border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
                 border-radius: var(--border-radius);
@@ -844,7 +866,7 @@
     </head>
     <body>
         <h1>Chord Dancer</h1>
-        <div id="picker"></div>
+        <chord-picker></chord-picker>
         <div id="navigator"></div>
         <div class="buttons">
             <button type="button" id="undo">Undo</button>
