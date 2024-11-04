@@ -14,7 +14,6 @@
                 BarNote,
                 TextNote
             } = Vex.Flow;
-
             
             class ChordHistory extends EventTarget {
                 #states = [];
@@ -255,78 +254,74 @@
                 });
 
                 static nameChord = function(root, third, fifth) {
-                    const chordName = ChordHelper.chordNames[third][fifth];
-                    if (chordName) {
-                        return ` ${ChordHelper.noteNames[root]}${chordName}`;
-                    } else {
-                        return undefined;
-                    }
+                    const rootName = ChordHelper.noteNames[root];
+                    const chordName = ChordHelper.chordNames[third]?.[fifth];
+                    return (rootName && chordName)
+                        ? `${rootName}${chordName}`
+                        : undefined;
                 };
             
                 static spellChord = function(root, third, fifth) {
-                    const rootNodes = ChordHelper.noteNames[root];
-                    const thirdNodes = ChordHelper.noteNames[(root + third) % 12];
-                    const fifthNodes = ChordHelper.noteNames[(root + fifth) % 12];
-                    return `${rootNodes} ${thirdNodes} ${fifthNodes}`;
+                    const rootName = ChordHelper.noteNames[root];
+                    const thirdName = ChordHelper.noteNames[(root + third) % 12];
+                    const fifthName = ChordHelper.noteNames[(root + fifth) % 12];
+                    return (rootName && thirdName && fifthName)
+                        ? `${rootName} ${thirdName} ${fifthName}`
+                        : undefined;
                 };
 
                 static lowerRoot = function(root, third, fifth) {
-                    const newRoot = (root - 1 + 12) % 12;
-                    const newThird = (third + 1) % 12;
-                    const newFifth = (fifth + 1) % 12;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        (root - 1 + 12) % 12,
+                        (third + 1) % 12,
+                        (fifth + 1) % 12
+                    ];
                 };
                 
                 static raiseRoot = function(root, third, fifth) {
-                    const newRoot = (root + 1) % 12;
-                    const newThird = (third - 1 + 12) % 12;
-                    const newFifth = (fifth - 1 + 12) % 12;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        (root + 1) % 12,
+                        (third - 1 + 12) % 12,
+                        (fifth - 1 + 12) % 12
+                    ];
                 };
                 
                 static lowerThird = function(root, third, fifth) {
-                    const newRoot = root;
-                    const newThird = (third - 1 + 12) % 12;
-                    const newFifth = fifth;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        root,
+                        (third - 1 + 12) % 12,
+                        fifth
+                    ];
                 };
                 
                 static raiseThird(root, third, fifth) {
-                    const newRoot = root;
-                    const newThird = (third + 1) % 12;
-                    const newFifth = fifth;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        root,
+                        (third + 1) % 12,
+                        fifth
+                    ];
                 }
                 
                 static lowerFifth(root, third, fifth) {
-                    const newRoot = root;
-                    const newThird = third;
-                    const newFifth = (fifth - 1 + 12) % 12;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        root,
+                        third,
+                        (fifth - 1 + 12) % 12
+                    ];
                 }
                 
                 static raiseFifth(root, third, fifth) {
-                    const newRoot = root;
-                    const newThird = third;
-                    const newFifth = (fifth + 1) % 12;
-                    
-                    return [newRoot, newThird, newFifth];
+                    return [
+                        root,
+                        third,
+                        (fifth + 1) % 12
+                    ];
                 }
                 
                 static findRootPosition(root, third, fifth) {
-                    if (
-                        ChordHelper.chordNames[third] !== undefined
-                        && ChordHelper.chordNames[third][fifth] !== undefined
-                    ) {
-                        return [root, third, fifth];
-                    } else {
-                        return null;
-                    }
+                    return (root !== undefined && ChordHelper.chordNames[third]?.[fifth])
+                        ? [root, third, fifth]
+                        : undefined;
                 }
 
                 static findFirstInversion(root, third, fifth) {
@@ -334,14 +329,9 @@
                     const newThird = (12 + fifth - third) % 12;
                     const newFifth = (12 - third) % 12;
 
-                    if (
-                        ChordHelper.chordNames[newThird] !== undefined
-                        && ChordHelper.chordNames[newThird][newFifth] !== undefined
-                    ) {
-                        return [newRoot, newThird, newFifth];
-                    } else {
-                        return null;
-                    }
+                    return (newRoot !== undefined && ChordHelper.chordNames[newThird]?.[newFifth])
+                        ? [newRoot, newThird, newFifth]
+                        : undefined;
                 }
 
                 static findSecondInversion(root, third, fifth) {
@@ -349,14 +339,9 @@
                     const newThird = (12 - fifth) % 12;
                     const newFifth = (12 + third - fifth) % 12;
 
-                    if (
-                        ChordHelper.chordNames[newThird] !== undefined
-                        && ChordHelper.chordNames[newThird][newFifth] !== undefined
-                    ) {
-                        return [newRoot, newThird, newFifth];
-                    } else {
-                        return null;
-                    }
+                    return (newRoot !== undefined && ChordHelper.chordNames[newThird]?.[newFifth])
+                        ? [newRoot, newThird, newFifth]
+                        : undefined;
                 }
 
                 static findInversions(root, third, fifth) {
@@ -423,106 +408,6 @@
                 }
             }
 
-
-            function renderChordGraph(root, third, fifth, octave, target) {
-                function getChordGraphElement(root, third, fifth, octave) {
-                    function getChordCollectionElement(root, third, fifth, octave) {
-                        function getChordElement(root, third, fifth, octave) {
-                            if (root === null) return null;
-
-                            const el = document.createElement("button");
-                            el.setAttribute("type", "button");
-                            el.classList.add("chord");
-                            el.innerText = `${ChordHelper.nameChord(root, third, fifth)} (${ChordHelper.spellChord(root, third, fifth)})`;
-
-                            el.addEventListener("click", () => {
-                                el.dispatchEvent(new CustomEvent(
-                                    "chordPushed",
-                                    {
-                                        bubbles: true,
-                                        detail: [ root, third, fifth, octave ]
-                                    }
-                                ));
-                            });
-                            return el;
-                        }
-
-                        if (root === null) return null;
-
-                        const el = document.createElement("div");
-                        el.classList.add("chord-collection");
-                        const inversions = ChordHelper.findInversions(root, third, fifth);
-                        for (const inversion of inversions) {
-                            el.append(getChordElement(...inversion, octave));
-                        }
-                        return el;
-                    }
-
-                    function getOctaveControlElement(octave) {
-                        const el = document.createElement("div");
-
-                        const upButton = document.createElement("button");
-                        upButton.id = "octave-up";
-                        upButton.innerText = "Octave Up";
-                        upButton.addEventListener("click", () => {
-                            el.dispatchEvent(new CustomEvent(
-                                "octaveIncreased",
-                                {
-                                    bubbles: true
-                                }
-                            ));
-                        });
-                        el.appendChild(upButton);
-
-                        const downButton = document.createElement("button");
-                        downButton.id = "octave-down";
-                        downButton.innerText = "Octave Down";
-                        downButton.addEventListener("click", () => {
-                            el.dispatchEvent(new CustomEvent(
-                                "octaveDecreased",
-                                {
-                                    bubbles: true
-                                }
-                            ));
-                        });
-                        el.appendChild(downButton);
-
-                        return el;
-                    }
-
-                    const table = document.createElement("div");
-                    table.classList.add("chord-graph");
-                    const topRow = document.createElement("div");
-                    const middleRow = document.createElement("div");
-                    const bottomRow = document.createElement("div");
-                    topRow.append(
-                        document.createElement("div"),
-                        getChordCollectionElement(...ChordHelper.raiseRoot(root, third, fifth), octave),
-                        getChordCollectionElement(...ChordHelper.raiseThird(root, third, fifth), octave)
-                    );
-                    middleRow.append(
-                        getChordCollectionElement(...ChordHelper.lowerFifth(root, third, fifth), octave),
-                        getChordCollectionElement(root, third, fifth, octave),
-                        getChordCollectionElement(...ChordHelper.raiseFifth(root, third, fifth), octave)
-                    );
-                    bottomRow.append(
-                        getChordCollectionElement(...ChordHelper.lowerThird(root, third, fifth), octave),
-                        getChordCollectionElement(...ChordHelper.lowerRoot(root, third, fifth), octave),
-                        getOctaveControlElement(octave)
-                    );
-                    table.append(topRow, middleRow, bottomRow);
-                    return table;
-                }
-
-                const graph = getChordGraphElement(root, third, fifth, octave);
-                const oldGraph = target.querySelector("& > .chord-graph");
-                if (oldGraph) {
-                    oldGraph.replaceWith(graph);
-                } else {
-                    target.append(graph);
-                }
-            }
-
             function renderStaves(chords, target) {
                 function renderStave(notes, chordNames, context, top) {
                     const notesWidth = notes.length * StaveHelper.metrics.chordWidth;
@@ -554,7 +439,7 @@
                 const chordNames = chords.map(chord => StaveHelper.nameChord(...chord));
                 const staveCount = Math.ceil(notes.length / StaveHelper.metrics.maxChords);
 
-                target.textContent = '';
+                target.textContent = "";
                 const renderer = new Renderer(target, Renderer.Backends.SVG);
                 const canvasWidth = StaveHelper.metrics.maxChords * StaveHelper.metrics.chordWidth + StaveHelper.metrics.clefWidth + StaveHelper.metrics.horizontalMargin * 2;
                 const canvasHeight = StaveHelper.metrics.topMargin + Math.max(1, staveCount) * StaveHelper.metrics.staveHeight;
@@ -568,7 +453,6 @@
                 }
             }
 
-
             customElements.define("chord-picker", class extends HTMLElement {
                 rootPicker;
                 thirdPicker;
@@ -581,11 +465,11 @@
                 constructor() {
                     super();
 
-                    const picker = this.attachShadow({ mode: "open" });
+                    const picker = this.attachShadow({ mode: "closed" });
 
                     {
                         this.rootPicker = document.createElement("select");
-                        this.rootPicker.setAttribute("part", "select");
+                        this.rootPicker.setAttribute("part", "control select");
                         this.rootPicker.addEventListener("change", () => this.updateButton());
 
                         for (const index in ChordHelper.noteNames) {
@@ -600,7 +484,7 @@
  
                     {
                         this.thirdPicker = document.createElement("select");
-                        this.thirdPicker.setAttribute("part", "select");
+                        this.thirdPicker.setAttribute("part", "control select");
                         this.thirdPicker.addEventListener("change", () => this.updateButton());
 
                         for (const index in ChordHelper.thirdNames) {
@@ -615,7 +499,7 @@
 
                     {
                         this.fifthPicker = document.createElement("select");
-                        this.fifthPicker.setAttribute("part", "select");
+                        this.fifthPicker.setAttribute("part", "control select");
                         this.fifthPicker.addEventListener("change", () => this.updateButton());
 
                         for (const index in ChordHelper.fifthNames) {
@@ -631,7 +515,7 @@
 
                     {
                         this.octavePicker = document.createElement("select");
-                        this.octavePicker.setAttribute("part", "select");
+                        this.octavePicker.setAttribute("part", "control select");
                         for (const name of ChordHelper.octaveNames.toReversed()) {
                             const index = parseInt(name);
                             const option = document.createElement("option");
@@ -644,7 +528,7 @@
 
                     {
                         this.button = document.createElement("button");
-                        this.button.setAttribute("part", "button");
+                        this.button.setAttribute("part", "control button");
                         this.button.addEventListener("click", () => {
                             this.dispatchEvent(new CustomEvent(
                                 "chordPushed",
@@ -669,8 +553,9 @@
                     const fifth = this.fifthPicker.value;
                     const octave = this.octavePicker.value;
                     const chordName = ChordHelper.nameChord(root, third, fifth);
+                    const chordSpelling = ChordHelper.spellChord(root, third, fifth);
                     if (chordName) {
-                        this.button.innerText = `${chordName} (${ChordHelper.spellChord(root, third, fifth)})`;
+                        this.button.innerText = `${chordName} (${chordSpelling})`;
                         this.button.disabled = false;
                     } else {
                         this.button.innerText = "Chord undefined";
@@ -678,8 +563,9 @@
                     }
                 }
 
-
                 attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
                     if (name === "root") this.rootPicker.value = newValue;
                     if (name === "third") this.thirdPicker.value = newValue;
                     if (name === "fifth") this.fifthPicker.value = newValue;
@@ -688,10 +574,388 @@
                 }
             });
 
+            customElements.define("chord-button", class extends HTMLElement {
+                root;
+                third;
+                fifth;
+                octave;
+
+                chord;
+                button;
+
+                static observedAttributes = ["root", "third", "fifth", "octave"];
+
+                constructor() {
+                    super();
+
+                    this.chord = this.attachShadow({ mode: "closed" });
+                    
+                    this.button = document.createElement("button");
+                    this.button.setAttribute("type", "button");
+                    this.button.setAttribute("part", "button");
+                    this.button.addEventListener("click", () => {
+                        this.dispatchEvent(new CustomEvent(
+                            "chordPushed",
+                            {
+                                bubbles: true,
+                                detail: [
+                                    this.root,
+                                    this.third,
+                                    this.fifth,
+                                    this.octave
+                                ]
+                            }
+                        ));
+                    });
+                }
+
+                updateButton() {
+                    const chordName = ChordHelper.nameChord(this.root, this.third, this.fifth);
+                    const chordSpelling = ChordHelper.spellChord(this.root, this.third, this.fifth);
+                    this.button.innerText = `${chordName} (${chordSpelling})`;
+                    if (chordName) {
+                        this.chord.appendChild(this.button);
+                    } else if (this.chord.contains(this.button)) {
+                        this.chord.removeChild(this.button);
+                    }
+                }
+
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
+                    if (name === "root") this.root = parseInt(newValue);
+                    if (name === "third") this.third = parseInt(newValue);
+                    if (name === "fifth") this.fifth = parseInt(newValue);
+                    if (name === "octave") this.octave = parseInt(newValue);
+                    this.updateButton();
+                }
+            });
+
+            customElements.define("chord-collection", class extends HTMLElement {
+                root;
+                third;
+                fifth;
+                octave;
+
+                collection;
+                firstChord;
+                secondChord;
+                thirdChord;
+
+                static observedAttributes = ["root", "third", "fifth", "octave"];
+
+                constructor() {
+                    super();
+
+                    this.collection = this.attachShadow({ mode: "closed" });
+
+                    this.firstChord = document.createElement("chord-button");
+                    this.firstChord.setAttribute("exportparts", "button");
+                    this.firstChord.setAttribute("part", "chord");
+                    this.firstChord.addEventListener("chordPushed", e => this.pushChord(e));
+                    this.secondChord = document.createElement("chord-button");
+                    this.secondChord.setAttribute("exportparts", "button");
+                    this.secondChord.setAttribute("part", "chord");
+                    this.secondChord.addEventListener("chordPushed", e => this.pushChord(e));
+                    this.thirdChord = document.createElement("chord-button");
+                    this.thirdChord.setAttribute("exportparts", "button");
+                    this.thirdChord.setAttribute("part", "chord");
+                    this.thirdChord.addEventListener("chordPushed", e => this.pushChord(e));
+                }
+
+                pushChord(e) {
+                    this.dispatchEvent(new CustomEvent(
+                        "chordPushed",
+                        {
+                            bubbles: true,
+                            detail: e.detail
+                        }
+                    ));
+                }
+
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
+                    if (name === "root") {
+                        this.root = parseInt(newValue);
+                        this.updateChords();
+                    }
+                    if (name === "third") {
+                        this.third = parseInt(newValue);
+                        this.updateChords();
+                    }
+                    if (name === "fifth") {
+                        this.fifth = parseInt(newValue);
+                        this.updateChords();
+                    }
+                    if (name === "octave") {
+                        this.octave = parseInt(newValue);
+                        this.updateOctave();
+                    }
+                }
+
+                updateChords() {
+                    const inversions = ChordHelper.findInversions(this.root, this.third, this.fifth);
+
+                    if (inversions[0]) {
+                        this.firstChord.setAttribute("root", inversions[0][0]);
+                        this.firstChord.setAttribute("third", inversions[0][1]);
+                        this.firstChord.setAttribute("fifth", inversions[0][2]);
+                        this.collection.appendChild(this.firstChord);
+                    } else if (this.collection.contains(this.firstChild)) {
+                        this.collection.removeChild(this.firstChord);
+                    }
+
+                    if (inversions[1]) {
+                        this.secondChord.setAttribute("root", inversions[1]?.[0]);
+                        this.secondChord.setAttribute("third", inversions[1]?.[1]);
+                        this.secondChord.setAttribute("fifth", inversions[1]?.[2]);
+                        this.collection.appendChild(this.secondChord);
+                    } else if (this.collection.contains(this.secondChord)) {
+                        this.collection.removeChild(this.secondChord);
+                    }
+
+                    if (inversions[2]) {
+                        this.thirdChord.setAttribute("root", inversions[2]?.[0]);
+                        this.thirdChord.setAttribute("third", inversions[2]?.[1]);
+                        this.thirdChord.setAttribute("fifth", inversions[2]?.[2]);
+                        this.collection.appendChild(this.thirdChord);
+                    } else if (this.collection.contains(this.thirdChord)) {
+                        this.collection.removeChild(this.thirdChord);
+                    }
+                }
+
+                updateOctave() {
+                    this.firstChord.setAttribute("octave", this.octave);
+                    this.secondChord.setAttribute("octave", this.octave);
+                    this.thirdChord.setAttribute("octave", this.octave);
+                }
+            });
+
+            customElements.define("octave-control", class extends HTMLElement {
+                octave;
+                disabled;
+
+                upButton;
+                downButton;
+
+                static observedAttributes = ["octave", "disabled"];
+
+                constructor() {
+                    super();
+
+                    const control = this.attachShadow({ mode: "closed" });
+
+                    this.upButton = document.createElement("button");
+                    this.upButton.setAttribute("part", "button");
+                    this.upButton.innerText = "Octave Up";
+                    this.upButton.addEventListener("click", () => {
+                        this.dispatchEvent(new CustomEvent(
+                            "octaveIncreased",
+                            {
+                                bubbles: true
+                            }
+                        ));
+                    });
+                    control.appendChild(this.upButton);
+
+                    this.downButton = document.createElement("button");
+                    this.downButton.setAttribute("part", "button");
+                    this.downButton.innerText = "Octave Down";
+                    this.downButton.addEventListener("click", () => {
+                        this.dispatchEvent(new CustomEvent(
+                            "octaveDecreased",
+                            {
+                                bubbles: true
+                            }
+                        ));
+                    });
+                    control.appendChild(this.downButton);
+                }
+
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
+                    if (name === "octave") {
+                        this.octave = parseInt(newValue);
+                        this.updateOctave();
+                    }
+
+                    if (name === "disabled") {
+                        this.disabled = newValue != null;
+                        this.updateOctave();
+                    }
+                }
+
+                updateOctave() {
+                    this.downButton.disabled = this.disabled || this.octave <= -3;
+                    this.upButton.disabled = this.disabled || this.octave >= 3;
+                }
+            });
+
+            customElements.define("chord-graph", class extends HTMLElement {
+                root;
+                third;
+                fifth;
+                octave;
+                activeChord;
+
+                currentChordCollection;
+                raiseRootCollection;
+                lowerRootCollection;
+                raiseThirdCollection;
+                lowerThirdCollection;
+                raiseFifthCollection;
+                lowerFifthCollection;
+
+                octaveControl;
+
+                static observedAttributes = ["root", "third", "fifth", "octave", "active-chord"];
+
+                constructor() {
+                    super();
+
+                    const root = this.attachShadow({ mode: "closed" });
+                    root.addEventListener("chordPushed", (e) =>  this.dispatchEvent(new CustomEvent(
+                        "chordPushed",
+                        {
+                            bubbles: true,
+                            detail: e.detail
+                        }
+                    )));
+                    root.addEventListener("octaveIncreased", () => this.dispatchEvent(new CustomEvent(
+                        "octaveIncreased",
+                        {
+                            bubbles: true
+                        }
+                    )));
+                    root.addEventListener("octaveDecreased", () => this.dispatchEvent(new CustomEvent(
+                        "octaveDecreased",
+                        {
+                            bubbles: true
+                        }
+                    )));
+
+                    const table = document.createElement("div");
+                    table.setAttribute("part", "table");
+
+                    const octaveControlParts = "octave-control cell";
+                    const octaveControlExportedParts = "button, button:octave-button";
+                    const chordCollectionParts = "chord-collection cell"
+                    const chordCollectionExportedParts = "button, button:chord-button";
+
+                    const topRow = document.createElement("div");
+                    topRow.setAttribute("part", "row");
+                    const placeholder = document.createElement("div");
+                    placeholder.setAttribute("part", "cell");
+                    this.raiseRootCollection = document.createElement("chord-collection");
+                    this.raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.raiseRootCollection.setAttribute("part", chordCollectionParts);
+                    this.raiseThirdCollection = document.createElement("chord-collection");
+                    this.raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.raiseThirdCollection.setAttribute("part", chordCollectionParts);
+                    topRow.append(
+                        placeholder,
+                        this.raiseRootCollection,
+                        this.raiseThirdCollection
+                    );
+
+                    const middleRow = document.createElement("div");
+                    middleRow.setAttribute("part", "row");
+                    this.lowerFifthCollection = document.createElement("chord-collection");
+                    this.lowerFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.lowerFifthCollection.setAttribute("part", chordCollectionParts);
+                    this.currentChordCollection = document.createElement("chord-collection");
+                    this.currentChordCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.currentChordCollection.setAttribute("part", chordCollectionParts);
+                    this.raiseFifthCollection = document.createElement("chord-collection");
+                    this.raiseFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.raiseFifthCollection.setAttribute("part", chordCollectionParts);
+                    middleRow.append(
+                        this.lowerFifthCollection,
+                        this.currentChordCollection,
+                        this.raiseFifthCollection
+                    );
+                    
+                    const bottomRow = document.createElement("div");
+                    bottomRow.setAttribute("part", "row");
+                    this.lowerThirdCollection = document.createElement("chord-collection");
+                    this.lowerThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.lowerThirdCollection.setAttribute("part", chordCollectionParts);
+                    this.lowerRootCollection = document.createElement("chord-collection");
+                    this.lowerRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.lowerRootCollection.setAttribute("part", chordCollectionParts);
+                    this.octaveControl = document.createElement("octave-control");
+                    this.octaveControl.setAttribute("exportparts", octaveControlExportedParts);
+                    this.octaveControl.setAttribute("part", octaveControlParts);
+                    bottomRow.append(
+                        this.lowerThirdCollection,
+                        this.lowerRootCollection,
+                        this.octaveControl
+                    );
+
+                    table.append(topRow, middleRow, bottomRow);
+                    root.append(table);
+                }
+                
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
+                    if (name === "root") {
+                        this.root = parseInt(newValue);
+                        this.updateChordCollections();
+                    }
+                    if (name === "third") {
+                        this.third = parseInt(newValue);
+                        this.updateChordCollections();
+                    }
+                    if (name === "fifth") {
+                        this.fifth = parseInt(newValue);
+                        this.updateChordCollections();
+                    }
+                    if (name === "octave") {
+                        this.octave = parseInt(newValue);
+                        this.updateChordCollections();
+                        this.updateOctave();
+                    }
+                    if (name === "active-chord") {
+                        this.activeChord = newValue != null;
+                        this.updateOctave();
+                    }
+                }
+
+                updateChordCollection(chordCollection, root, third, fifth, octave) {
+                    chordCollection.setAttribute("root", root);
+                    chordCollection.setAttribute("third", third);
+                    chordCollection.setAttribute("fifth", fifth);
+                    chordCollection.setAttribute("octave", octave);
+                }
+
+                updateChordCollections() {
+                    this.updateChordCollection(this.raiseRootCollection, ...ChordHelper.raiseRoot(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.raiseThirdCollection, ...ChordHelper.raiseThird(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.lowerFifthCollection, ...ChordHelper.lowerFifth(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.currentChordCollection, this.root, this.third, this.fifth, this.octave);
+                    this.updateChordCollection(this.raiseFifthCollection, ...ChordHelper.raiseFifth(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.lowerThirdCollection, ...ChordHelper.lowerThird(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.lowerRootCollection, ...ChordHelper.lowerRoot(this.root, this.third, this.fifth), this.octave);
+                }
+
+                updateOctave() {
+                    if (this.activeChord) {
+                        this.octaveControl.removeAttribute("disabled");
+                    } else {
+                        this.octaveControl.setAttribute("disabled", "");
+                    }
+                    this.octaveControl.setAttribute("octave", this.octave);
+                }
+            });
 
             document.addEventListener("DOMContentLoaded", () => {
                 const chordHistory = new ChordHistory();
                 const chordPlayer = new ChordPlayer();
+                const chordGraph = document.querySelector("chord-graph");
+                const chordPicker = document.querySelector("chord-picker");
 
                 chordHistory.addEventListener("stateUpdated", updateUI);
 
@@ -712,9 +976,24 @@
                     document.querySelector(".vf-stavenote.highlight")?.classList.remove("highlight");
                 });
 
+                function setChord(root, third, fifth, octave) {
+                    chordGraph.setAttribute("root", root);
+                    chordGraph.setAttribute("third", third);
+                    chordGraph.setAttribute("fifth", fifth);
+                    chordGraph.setAttribute("octave", octave);
+
+                    chordPicker.setAttribute("root", root);
+                    chordPicker.setAttribute("third", third);
+                    chordPicker.setAttribute("fifth", fifth);
+                    chordPicker.setAttribute("octave", octave);
+                }
+
                 function setInitialChord() {
-                    renderChordGraph(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0, document.getElementById("navigator"));
-                    const chordPicker = document.querySelector("chord-picker")
+                    chordGraph.setAttribute("root", 0);
+                    chordGraph.setAttribute("third", ChordHelper.thirds.maj);
+                    chordGraph.setAttribute("fifth", ChordHelper.fifths.perf);
+                    chordGraph.setAttribute("octave", 0);
+
                     chordPicker.setAttribute("root", 0);
                     chordPicker.setAttribute("third", ChordHelper.thirds.maj);
                     chordPicker.setAttribute("fifth", ChordHelper.fifths.perf);
@@ -726,23 +1005,14 @@
                     document.getElementById("stop").disabled = true;
 
                     if (chordHistory.latestChord) {
-                        renderChordGraph(...chordHistory.latestChord, document.getElementById("navigator"));
-                        
-                        const chordPicker = document.querySelector("chord-picker")
-                        chordPicker.setAttribute("root", chordHistory.latestChord[0]);
-                        chordPicker.setAttribute("third", chordHistory.latestChord[1]);
-                        chordPicker.setAttribute("fifth", chordHistory.latestChord[2]);
-                        chordPicker.setAttribute("octave", chordHistory.latestChord[3]);
-
+                        setChord(...chordHistory.latestChord);
+                        chordGraph.setAttribute("active-chord", "");
                         chordPlayer.playChord(...chordHistory.latestChord);
                         document.getElementById("clear").disabled = false;
                         document.getElementById("play").disabled = false;
-                        document.getElementById("octave-up").disabled = chordHistory.latestChord[3] >= 3;
-                        document.getElementById("octave-down").disabled = chordHistory.latestChord[3] <= -3;
                     } else {
-                        setInitialChord();
-                        document.getElementById("octave-up").disabled = true;
-                        document.getElementById("octave-down").disabled = true;
+                        setChord(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0);
+                        chordGraph.removeAttribute("active-chord");
                         document.getElementById("clear").disabled = true;
                         document.getElementById("play").disabled = true;
                     }
@@ -786,47 +1056,38 @@
                 color: oklch(from var(--theme-color) 65% 20% h);
             }
 
-            .chord-graph {
-                display: table;
-                border-spacing: 0.75em;
+            .buttons, chord-picker {
+                margin: 1em 0;
+            }
 
-                > * {
+            chord-graph {
+                &::part(table) {
+                    display: table;
+                    border-spacing: 0.75em;
+                }
+
+                &::part(row) {
                     display: table-row;
-                    > * {
-                        display: table-cell;
-                        vertical-align: middle;
-                        width: var(--chord-width);
-                        height: 6em;
-                    }
                 }
 
-                button {
-                    margin: 0.25em 0;
-                    width: 100%;
+                &::part(cell) {
+                    display: table-cell;
+                    vertical-align: middle;
+                    width: var(--chord-width);
+                    height: 6em;
                 }
 
-                .chord-collection {
+                &::part(chord-collection) {
                     border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
                     border-radius: var(--border-radius);
                     background: oklch(from var(--theme-color) 98% 2% h);
                     padding: 0 0.25em;
-
-                    .chord {
-                        border: 0;
-                        border-radius: var(--border-radius);
-                        line-height: 0.9em;
-                        text-align: left;
-
-                        &:hover {
-                            cursor: pointer;
-                            background: oklch(from var(--theme-color) 90% 10% h);
-                        }
-                    }
                 }
             }
 
-            .buttons, chord-picker {
-                margin: 1em 0;
+            button,
+            chord-picker::part(control) {
+                margin: 0 0.4em;
             }
 
             chord-picker::part(button) {
@@ -835,28 +1096,61 @@
             }
 
             button,
-            chord-picker::part(select), chord-picker::part(button) {
-                color: oklch(from var(--theme-color) 30% 30% h);
+            chord-picker::part(control),
+            chord-graph::part(octave-button) {
                 border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
-                border-radius: var(--border-radius);
                 background: oklch(from var(--theme-color) 98% 2% h);
-                padding: 0.25em 0.4em;
-                margin: 0 0.4em;
-                font-size: 1em;
-                
-                &:hover:not(:disabled, :active) {
-                    background: oklch(from var(--theme-color) 90% 10% h);
-                }
-                
-                &:active:not(:disabled)  {
-                    background: oklch(from var(--theme-color) 94% 10% h);
-                }
+            }
 
-                &:disabled {
-                    color: oklch(from var(--theme-color) 80% 10% h);
-                    border-color: oklch(from var(--theme-color) 90% 10% h);
-                    background: oklch(from var(--theme-color) 95% 2% h);
-                }
+            button,
+            chord-picker::part(control),
+            chord-graph::part(button) {
+                color: oklch(from var(--theme-color) 30% 30% h);
+                border-radius: var(--border-radius);
+                padding: 0.25em 0.4em;
+                font-size: 1em;
+            }
+
+            chord-graph::part(button) {
+                margin: 0.25em 0;
+                width: 100%;
+            }
+
+            chord-graph::part(chord-button) {
+                border: 0;
+                line-height: 0.9em;
+                text-align: left;
+                cursor: pointer;
+                background: transparent;
+            }
+
+            /* Pseudo-elements and nesting/is don't get along: https://github.com/w3c/csswg-drafts/issues/9702 */
+            button:focus:not(:hover, :active, :disabled),
+            chord-picker::part(control):focus:not(:hover, :active, :disabled),
+            chord-graph::part(button):focus:not(:hover, :active, :disabled)
+            {
+                background: oklch(from var(--theme-color) 94% 10% h);
+            }
+
+            button:hover:not(:active, :disabled),
+            chord-picker::part(control):hover:not(:active, :disabled),
+            chord-graph::part(button):hover:not(:active, :disabled)
+            {
+                background: oklch(from var(--theme-color) 90% 10% h);
+            }
+
+            button:active:not(:disabled),
+            chord-picker::part(button):active:not(:disabled),
+            chord-graph::part(button):active:not(:disabled)
+            {
+                background: oklch(from var(--theme-color) 94% 10% h);
+            }
+
+            button:disabled,
+            chord-graph::part(octave-button):disabled {
+                color: oklch(from var(--theme-color) 80% 10% h);
+                border-color: oklch(from var(--theme-color) 90% 10% h);
+                background: oklch(from var(--theme-color) 95% 2% h);
             }
 
             .vf-stavenote.highlight {
@@ -867,6 +1161,7 @@
     <body>
         <h1>Chord Dancer</h1>
         <chord-picker></chord-picker>
+        <chord-graph></chord-graph>
         <div id="navigator"></div>
         <div class="buttons">
             <button type="button" id="undo">Undo</button>
