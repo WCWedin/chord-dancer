@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chord Dancer</title>
         <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
         <script>
@@ -408,51 +409,6 @@
                 }
             }
 
-            function renderStaves(chords, target) {
-                function renderStave(notes, chordNames, context, top) {
-                    const notesWidth = notes.length * StaveHelper.metrics.chordWidth;
-
-                    const stave = new Stave(StaveHelper.metrics.horizontalMargin, top, notesWidth + StaveHelper.metrics.clefWidth);
-                    stave.addClef("treble");
-                    stave.setContext(context);
-
-                    const voice = new Voice({ num_beats: notes.length, beat_value: 1 }).setContext(context);
-                    const notesWithBarlines = [].concat(...notes.map(n => [n, new BarNote()])).slice(0, -1);
-                    voice.addTickables(notesWithBarlines).setStave(stave);
-                    
-                    const chordNameVoice = new Voice({ num_beats: notes.length, beat_value: 1 }).setContext(context);
-                    chordNames.forEach(chordName => {
-                        chordName.setStave(stave);
-                    });
-                    const chordNamesWithBarlines =  [].concat(...chordNames.map(n => [n, new BarNote()])).slice(0, -1);
-
-                    chordNameVoice.addTickables(chordNamesWithBarlines).setStave(stave);
-
-                    new Formatter().joinVoices([voice, chordNameVoice]).format([voice, chordNameVoice], notesWidth);
-
-                    stave.draw();
-                    voice.draw();
-                    chordNameVoice.draw();
-                }
-
-                const notes = chords.map(chord => StaveHelper.createChord(...chord));
-                const chordNames = chords.map(chord => StaveHelper.nameChord(...chord));
-                const staveCount = Math.ceil(notes.length / StaveHelper.metrics.maxChords);
-
-                target.textContent = "";
-                const renderer = new Renderer(target, Renderer.Backends.SVG);
-                const canvasWidth = StaveHelper.metrics.maxChords * StaveHelper.metrics.chordWidth + StaveHelper.metrics.clefWidth + StaveHelper.metrics.horizontalMargin * 2;
-                const canvasHeight = StaveHelper.metrics.topMargin + Math.max(1, staveCount) * StaveHelper.metrics.staveHeight;
-                renderer.resize(canvasWidth, canvasHeight);
-                const context = renderer.getContext();
-
-                for (let staveIndex = 0; staveIndex < staveCount || staveIndex === 0; ++staveIndex) {
-                    const staveNotes = notes.slice(staveIndex * StaveHelper.metrics.maxChords, (staveIndex + 1) * StaveHelper.metrics.maxChords);
-                    const staveChordNames = chordNames.slice(staveIndex * StaveHelper.metrics.maxChords, (staveIndex + 1) * StaveHelper.metrics.maxChords);
-                    renderStave(staveNotes, staveChordNames, context, StaveHelper.metrics.topMargin + staveIndex * (StaveHelper.metrics.staveHeight));
-                }
-            }
-
             customElements.define("chord-picker", class extends HTMLElement {
                 rootPicker;
                 thirdPicker;
@@ -702,7 +658,7 @@
                         this.firstChord.setAttribute("third", inversions[0][1]);
                         this.firstChord.setAttribute("fifth", inversions[0][2]);
                         this.collection.appendChild(this.firstChord);
-                    } else if (this.collection.contains(this.firstChild)) {
+                    } else if (this.collection.contains(this.firstChord)) {
                         this.collection.removeChild(this.firstChord);
                     }
 
@@ -950,57 +906,179 @@
                     this.octaveControl.setAttribute("octave", this.octave);
                 }
             });
+            
+            customElements.define("chord-sheet", class extends HTMLElement {
+                #container;
+                #width = 0;
+
+                constructor() {
+                    super();
+
+                    const root = this.attachShadow({ mode: "closed" });
+                    const style = new CSSStyleSheet();
+                    style.insertRule(`div {
+                        display: flex;
+                        justify-content: center;
+                        width: 100% !important;
+                    }`);
+                    style.insertRule(`.vf-stavenote.selected:not(.playing) {
+                        fill: var(--selected-color);
+
+                        & + text {
+                            fill: var(--selected-text-color);
+                        }
+                    }`);
+                    style.insertRule(`.vf-stavenote.playing {
+                        fill: var(--playing-color);
+
+                        & + text {
+                            fill: var(--playing-text-color);
+                        }
+                    }`);
+                    root.adoptedStyleSheets = [style];
+                    this.#container = document.createElement("div");
+                    root.appendChild(this.#container);
+
+                    const resizeObserver = new ResizeObserver((entries) => {
+                        this.#width = entries[0].contentBoxSize[0].inlineSize;
+                        this.#render();
+                    });
+
+                    resizeObserver.observe(this);
+                }
+
+                #chords = [];
+
+                set chords(newChords) {
+                    this.#chords = newChords;
+                    this.#render();
+                }
+
+                get #staveWidth() {
+                    return this.#width - StaveHelper.metrics.horizontalMargin * 2;
+                }
+
+                playChord(index) {
+                    this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.add("playing");
+                }
+
+                stopChord(index) {
+                    this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.remove("playing");
+                }
+
+                stopPlayback() {
+                    this.#container.querySelectorAll(".vf-stavenote.playing")?.forEach(chord => chord.classList.remove("playing"));
+                }
+
+                selectChord(index) {
+                    this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.add("selected");
+                }
+
+                deselectChord(index) {
+                    this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.remove("selected");
+                }
+
+                clearSelection() {
+                    this.#container.querySelectorAll(".vf-stavenote.selected")?.forEach(chord => chord.classList.remove("selected"));
+                }
+
+                #render() {
+                    const notes = this.#chords.map(chord => StaveHelper.createChord(...chord));
+                    const chordNames = this.#chords.map(chord => StaveHelper.nameChord(...chord));
+                    
+                    const maxChords = Math.floor((this.#staveWidth) / StaveHelper.metrics.chordWidth);
+                    const staveCount = Math.max(1, Math.ceil(notes.length / maxChords));
+
+                    this.#container.textContent = "";
+                    const renderer = new Renderer(this.#container, Renderer.Backends.SVG);
+                    const canvasWidth = this.#width;
+                    const canvasHeight = StaveHelper.metrics.topMargin + staveCount * StaveHelper.metrics.staveHeight;
+                    renderer.resize(canvasWidth, canvasHeight);
+                    const context = renderer.getContext();
+
+                    for (let staveIndex = 0; staveIndex < staveCount || staveIndex === 0; ++staveIndex) {
+                        const staveNotes = notes.slice(staveIndex * maxChords, (staveIndex + 1) * maxChords);
+                        const staveChordNames = chordNames.slice(staveIndex * maxChords, (staveIndex + 1) * maxChords);
+                        const top = StaveHelper.metrics.topMargin + staveIndex * (StaveHelper.metrics.staveHeight);
+                        this.#renderStave(staveNotes, staveChordNames, context, top);
+                    }
+                }
+
+                #renderStave(notes, chordNames, context, top) {
+                    const noteWidth = (this.#staveWidth - StaveHelper.metrics.clefWidth) / notes.length;
+                    for (const noteIndex in notes) {
+                        const measureWidth = noteWidth;
+                        const leftEdge =
+                            StaveHelper.metrics.horizontalMargin
+                            + noteWidth * noteIndex;
+                        const stave = new Stave(leftEdge, top, measureWidth);
+                        stave.setContext(context);
+                        if (noteIndex === "0") {
+                            stave.addClef("treble");
+                        }
+
+                        const voice = new Voice({ num_beats: 1, beat_value: 1 }).setContext(context);
+                        voice.addTickables([notes[noteIndex]]).setStave(stave);
+
+                        const chordNameVoice = new Voice({ num_beats: 1, beat_value: 1 }).setContext(context);
+                        chordNames[noteIndex].setStave(stave);
+                        chordNameVoice.addTickables([chordNames[noteIndex]]).setStave(stave);
+
+                        new Formatter().joinVoices([voice, chordNameVoice]).formatToStave([voice, chordNameVoice], stave);
+                        stave.draw();
+                        voice.draw();
+                        chordNameVoice.draw();
+                    }
+                }
+            });
 
             document.addEventListener("DOMContentLoaded", () => {
                 const chordHistory = new ChordHistory();
                 const chordPlayer = new ChordPlayer();
                 const chordGraph = document.querySelector("chord-graph");
                 const chordPicker = document.querySelector("chord-picker");
+                const chordSheet = document.querySelector("chord-sheet");
 
                 chordHistory.addEventListener("stateUpdated", updateUI);
 
                 chordPlayer.addEventListener("chordStarted", (event) => {
-                    document.querySelectorAll(".vf-stavenote")?.[event.detail.index]?.classList.add("highlight");
+                    chordSheet.playChord(event.detail.index);
                 });
-
                 chordPlayer.addEventListener("chordEnded", (event) => {
-                    document.querySelectorAll(".vf-stavenote")?.[event.detail.index]?.classList.remove("highlight");
+                    chordSheet.stopChord(event.detail.index);
                 });
-
                 chordPlayer.addEventListener("playbackStarted", () => {
                     document.getElementById("stop").disabled = false;
                 });
-
                 chordPlayer.addEventListener("playbackEnded", () => {
                     document.getElementById("stop").disabled = true;
-                    document.querySelector(".vf-stavenote.highlight")?.classList.remove("highlight");
+                    chordSheet.stopPlayback();
                 });
 
-                function setChord(root, third, fifth, octave) {
-                    chordGraph.setAttribute("root", root);
-                    chordGraph.setAttribute("third", third);
-                    chordGraph.setAttribute("fifth", fifth);
-                    chordGraph.setAttribute("octave", octave);
+                document.addEventListener("chordPushed", () => chordHistory.push(event.detail));
+                document.addEventListener("octaveIncreased", () => chordHistory.increaseOctave());
+                document.addEventListener("octaveDecreased", () => chordHistory.decreaseOctave());
 
-                    chordPicker.setAttribute("root", root);
-                    chordPicker.setAttribute("third", third);
-                    chordPicker.setAttribute("fifth", fifth);
-                    chordPicker.setAttribute("octave", octave);
-                }
+                document.getElementById("clear").addEventListener("click", () => chordHistory.clear());
+                document.getElementById("undo").addEventListener("click", () => chordHistory.undo());
+                document.getElementById("redo").addEventListener("click", () => chordHistory.redo());
 
-                function setInitialChord() {
-                    chordGraph.setAttribute("root", 0);
-                    chordGraph.setAttribute("third", ChordHelper.thirds.maj);
-                    chordGraph.setAttribute("fifth", ChordHelper.fifths.perf);
-                    chordGraph.setAttribute("octave", 0);
-
-                    chordPicker.setAttribute("root", 0);
-                    chordPicker.setAttribute("third", ChordHelper.thirds.maj);
-                    chordPicker.setAttribute("fifth", ChordHelper.fifths.perf);
-                    chordPicker.setAttribute("octave", 0);
-                }
+                document.getElementById("play").addEventListener("click", () => chordPlayer.playChords(chordHistory));
+                document.getElementById("stop").addEventListener("click", () => chordPlayer.stopPlayback());
 
                 function updateUI() {
+                    function setChord(root, third, fifth, octave) {
+                        chordGraph.setAttribute("root", root);
+                        chordGraph.setAttribute("third", third);
+                        chordGraph.setAttribute("fifth", fifth);
+                        chordGraph.setAttribute("octave", octave);
+
+                        chordPicker.setAttribute("root", root);
+                        chordPicker.setAttribute("third", third);
+                        chordPicker.setAttribute("fifth", fifth);
+                        chordPicker.setAttribute("octave", octave);
+                    }
+
                     chordPlayer.stopPlayback();
                     document.getElementById("stop").disabled = true;
 
@@ -1016,24 +1094,14 @@
                         document.getElementById("clear").disabled = true;
                         document.getElementById("play").disabled = true;
                     }
-                    
+
                     document.getElementById("undo").disabled = !chordHistory.canUndo;
                     document.getElementById("redo").disabled = !chordHistory.canRedo;
                     
-                    renderStaves(chordHistory, document.getElementById("staves"));
+                    chordSheet.chords = chordHistory;
                 }
 
                 updateUI();
-
-                document.addEventListener("chordPushed", () => chordHistory.push(event.detail));
-                document.addEventListener("octaveIncreased", () => chordHistory.increaseOctave());
-                document.addEventListener("octaveDecreased", () => chordHistory.decreaseOctave());
-                document.getElementById("clear").addEventListener("click", () => chordHistory.clear());
-                document.getElementById("undo").addEventListener("click", () => chordHistory.undo());
-                document.getElementById("redo").addEventListener("click", () => chordHistory.redo());
-
-                document.getElementById("play").addEventListener("click", () => chordPlayer.playChords(chordHistory));
-                document.getElementById("stop").addEventListener("click", () => chordPlayer.stopPlayback());
             });
         </script>
 
@@ -1058,6 +1126,14 @@
 
             .buttons, chord-picker {
                 margin: 1em 0;
+            }
+
+            chord-sheet {
+                width: 100%;
+                --playing-color: oklch(from var(--theme-color) 60% 30% h);
+                --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
+                --selected-color: oklch(from var(--theme-color) 60% 30% h);
+                --selected-text-color: oklch(from var(--theme-color) 50% 50% h);
             }
 
             chord-graph {
@@ -1152,17 +1228,12 @@
                 border-color: oklch(from var(--theme-color) 90% 10% h);
                 background: oklch(from var(--theme-color) 95% 2% h);
             }
-
-            .vf-stavenote.highlight {
-                fill: oklch(from var(--theme-color) 70% 30% h);
-            }
         </style>
     </head>
     <body>
         <h1>Chord Dancer</h1>
         <chord-picker></chord-picker>
         <chord-graph></chord-graph>
-        <div id="navigator"></div>
         <div class="buttons">
             <button type="button" id="undo">Undo</button>
             <button type="button" id="redo">Redo</button>
@@ -1172,6 +1243,6 @@
             <button type="button" id="stop">Stop</button>
             <button type="button" id="clear">Clear</button>
         </div>
-        <div id="staves"></div>
+        <chord-sheet></chord-sheet>
     </body>
 </html>
