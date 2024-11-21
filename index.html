@@ -143,6 +143,7 @@
                 }
 
                 #playChord(root, third, fifth, octave, onEnded) {
+                    console.log(this.#audioCtx.state);
                     this.stopChord();
 
                     const freqs = [
@@ -769,12 +770,56 @@
                 }
             });
 
+            customElements.define("stop-editing-panel", class extends HTMLElement {
+                disabled;
+                panel;
+                button;
+
+                static observedAttributes = ["disabled"];
+
+                constructor() {
+                    super();
+
+                    this.panel = this.attachShadow({ mode: "closed" });
+                    this.button = document.createElement("button");
+                    this.button.setAttribute("part", "button");
+                    this.button.innerText = "Stop Editing";
+                    this.button.addEventListener("click", () => {
+                        this.dispatchEvent(new CustomEvent(
+                            "stopEditing",
+                            {
+                                bubbles: true
+                            }
+                        ));
+                    });
+                    this.panel.appendChild(this.button);
+                }
+
+                attributeChangedCallback(name, oldValue, newValue) {
+                    if (oldValue === newValue) return;
+
+                    if (name === "disabled") {
+                        this.disabled = newValue !== null;
+                        this.updateButton();
+                    }
+                }
+
+                updateButton() {
+                    if (this.disabled) {
+                        this.panel.removeChild(this.button);
+                    } else {
+                        this.panel.appendChild(this.button);
+                    }
+                }
+            });
+
             customElements.define("chord-graph", class extends HTMLElement {
                 root;
                 third;
                 fifth;
                 octave;
                 activeChord;
+                editing;
 
                 currentChordCollection;
                 raiseRootCollection;
@@ -784,9 +829,10 @@
                 raiseFifthCollection;
                 lowerFifthCollection;
 
+                stopEditingPanel;
                 octaveControl;
 
-                static observedAttributes = ["root", "third", "fifth", "octave", "active-chord"];
+                static observedAttributes = ["root", "third", "fifth", "octave", "active-chord", "editing"];
 
                 constructor() {
                     super();
@@ -811,19 +857,29 @@
                             bubbles: true
                         }
                     )));
+                    root.addEventListener("stopEditing", () => this.dispatchEvent(new CustomEvent(
+                        "stopEditing",
+                        {
+                            bubbles: true
+                        }
+                    )));
 
                     const table = document.createElement("div");
                     table.setAttribute("part", "table");
 
+                    const stopEditingPanelParts = "stop-editing-panel cell";
+                    const stopEditingPanelExportedParts = "button, button:panel-button";
                     const octaveControlParts = "octave-control cell";
-                    const octaveControlExportedParts = "button, button:octave-button";
+                    const octaveControlExportedParts = "button, button:panel-button";
                     const chordCollectionParts = "chord-collection cell"
                     const chordCollectionExportedParts = "button, button:chord-button";
 
                     const topRow = document.createElement("div");
                     topRow.setAttribute("part", "row");
-                    const placeholder = document.createElement("div");
-                    placeholder.setAttribute("part", "cell");
+                    this.stopEditingPanel = document.createElement("stop-editing-panel");
+                    this.stopEditingPanel.setAttribute("exportparts", stopEditingPanelExportedParts);
+                    this.stopEditingPanel.setAttribute("part", stopEditingPanelParts);
+                    this.stopEditingPanel.setAttribute("disabled", "");
                     this.raiseRootCollection = document.createElement("chord-collection");
                     this.raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     this.raiseRootCollection.setAttribute("part", chordCollectionParts);
@@ -831,7 +887,7 @@
                     this.raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     this.raiseThirdCollection.setAttribute("part", chordCollectionParts);
                     topRow.append(
-                        placeholder,
+                        this.stopEditingPanel,
                         this.raiseRootCollection,
                         this.raiseThirdCollection
                     );
@@ -898,6 +954,10 @@
                         this.activeChord = newValue !== null;
                         this.updateOctave();
                     }
+                    if (name === "editing") {
+                        this.editing = newValue !== null;
+                        this.updateStopEditingPanel();
+                    }
                 }
 
                 updateChordCollection(chordCollection, root, third, fifth, octave) {
@@ -924,6 +984,14 @@
                         this.octaveControl.setAttribute("disabled", "");
                     }
                     this.octaveControl.setAttribute("octave", this.octave);
+                }
+
+                updateStopEditingPanel() {
+                    if (this.editing) {
+                        this.stopEditingPanel.removeAttribute("disabled");
+                    } else {
+                        this.stopEditingPanel.setAttribute("disabled", "");
+                    }
                 }
             });
             
@@ -1136,10 +1204,14 @@
                     if (editingIndex === undefined) chordHistory.decreaseOctave();
                     else chordHistory.decreaseOctave(editingIndex);
                 });
+                document.addEventListener("stopEditing", () => {
+                    editingIndex = undefined;
+                    updateUI();
+                });
 
                 document.getElementById("clear").addEventListener("click", () => {
-                    chordHistory.clear();
                     editingIndex = undefined;
+                    chordHistory.clear();
                 });
                 document.getElementById("undo").addEventListener("click", () => {
                     editingIndex = -1;
@@ -1171,9 +1243,11 @@
 
                     if (editingIndex === -1) editingIndex = chordHistory.selectedIndex;
                     if (editingIndex !== undefined) {
-                        document.body.classList.add("editing");
+                        chordPicker.setAttribute("editing", "");
+                        chordGraph.setAttribute("editing", "");
                     } else {
-                        document.body.classList.remove("editing");
+                        chordPicker.removeAttribute("editing");
+                        chordGraph.removeAttribute("editing");
                     }
 
                     if (chordHistory.latestChord) {
@@ -1235,8 +1309,8 @@
                 --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
             }
 
-            .editing chord-picker,
-            .editing chord-graph {
+            chord-picker[editing],
+            chord-graph[editing] {
                 --theme-color: var(--edit-color);
             }
 
@@ -1277,7 +1351,7 @@
 
             button,
             chord-picker::part(control),
-            chord-graph::part(octave-button) {
+            chord-graph::part(panel-button) {
                 border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
                 background: oklch(from var(--theme-color) 98% 2% h);
             }
@@ -1327,7 +1401,7 @@
             }
 
             button:disabled,
-            chord-graph::part(octave-button):disabled {
+            chord-graph::part(panel-button):disabled {
                 color: oklch(from var(--theme-color) 80% 10% h);
                 border-color: oklch(from var(--theme-color) 90% 10% h);
                 background: oklch(from var(--theme-color) 95% 2% h);
@@ -1347,6 +1421,16 @@
             <button type="button" id="stop">Stop</button>
             <button type="button" id="clear">Clear</button>
         </div>
+        <p>
+            To do:
+            <ol>
+                <li>Handle audio context auto-closing</li>
+                <li>"Stop editing" button</li>
+                <li>Volume slider</li>
+                <li>MusicXML export</li>
+                <li>Save/load</li>
+            </ol>
+        </p>
         <chord-sheet></chord-sheet>
     </body>
 </html>
