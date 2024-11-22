@@ -124,15 +124,33 @@
             }
 
             class ChordPlayer extends EventTarget {
-                #audioCtx = new AudioContext();
-                #wave = this.#audioCtx.createPeriodicWave([0, 1, 3], [2, 0, 3]);
-                #gainEnvelope;
+                #volume = 1;
+                #audioCtx;
+                #wave;
+                #chordGain;
+                #mainGain;
                 static #chordLength = 1;
 
+                initAudioContext() {
+                    this.#audioCtx = new AudioContext();
+                    this.#wave = this.#audioCtx.createPeriodicWave([0, 1, 3], [2, 0, 3]);
+                    this.#mainGain = new GainNode(this.#audioCtx);
+                    this.#mainGain.gain.setValueAtTime(this.#volume, this.#audioCtx.currentTime);
+                }
+
+                set volume(value) {
+                    this.#volume = value;
+                    if (this.#mainGain !== undefined) this.#mainGain.gain.setValueAtTime(this.#volume, this.#audioCtx.currentTime);
+                }
+
+                get volume() {
+                    return this.#volume;
+                }
+
                 stopChord() {
-                    if(this.#gainEnvelope) {
-                        this.#gainEnvelope.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + 0.1);
-                        this.#gainEnvelope = undefined;
+                    if(this.#chordGain) {
+                        this.#chordGain.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + 0.1);
+                        this.#chordGain = undefined;
                     }
                 }
 
@@ -143,7 +161,8 @@
                 }
 
                 #playChord(root, third, fifth, octave, onEnded) {
-                    console.log(this.#audioCtx.state);
+                    if (this.#audioCtx === undefined) this.initAudioContext();
+                    console.log(this.#audioCtx.state, this.#audioCtx.currentTime, this.#audioCtx);
                     this.stopChord();
 
                     const freqs = [
@@ -152,10 +171,13 @@
                         440 * Math.pow(2, (root + fifth - 9 + octave * 12) / 12)
                     ];
 
-                    this.#gainEnvelope = new GainNode(this.#audioCtx);
-                    this.#gainEnvelope.gain.setValueAtTime(0, this.#audioCtx.currentTime);
-                    this.#gainEnvelope.gain.linearRampToValueAtTime(1 / freqs.length, this.#audioCtx.currentTime + 0.1);
-                    this.#gainEnvelope.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + ChordPlayer.#chordLength);
+                    this.#chordGain = new GainNode(this.#audioCtx);
+                    const startTime = this.#audioCtx.currentTime;
+                    const peakTime = startTime + 0.1;
+                    const endTime = startTime + ChordPlayer.#chordLength;
+                    this.#chordGain.gain.setValueAtTime(0, this.#audioCtx.currentTime);
+                    this.#chordGain.gain.linearRampToValueAtTime(1 / freqs.length, this.#audioCtx.currentTime + 0.1);
+                    this.#chordGain.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + ChordPlayer.#chordLength);
 
                     const oscs = [];
 
@@ -163,7 +185,7 @@
                         const osc = this.#audioCtx.createOscillator();
                         osc.setPeriodicWave(this.#wave);
                         osc.frequency.value = freq;
-                        osc.connect(this.#gainEnvelope).connect(this.#audioCtx.destination);
+                        osc.connect(this.#chordGain).connect(this.#mainGain).connect(this.#audioCtx.destination);
                         oscs.push(osc);
                     }
 
@@ -505,6 +527,7 @@
 
                     { // button
                         this.#button = document.createElement("button");
+                        this.#button.setAttribute("tabindex", "0");
                         this.#button.setAttribute("part", "control button");
                         this.#button.addEventListener("click", () => {
                             this.dispatchEvent(new CustomEvent(
@@ -552,34 +575,34 @@
             });
 
             customElements.define("chord-button", class extends HTMLElement {
-                root;
-                third;
-                fifth;
-                octave;
+                #root;
+                #third;
+                #fifth;
+                #octave;
 
-                chord;
-                button;
+                #chord;
+                #button;
 
                 static observedAttributes = ["root", "third", "fifth", "octave"];
 
                 constructor() {
                     super();
 
-                    this.chord = this.attachShadow({ mode: "closed" });
+                    this.#chord = this.attachShadow({ mode: "closed" });
                     
-                    this.button = document.createElement("button");
-                    this.button.setAttribute("type", "button");
-                    this.button.setAttribute("part", "button");
-                    this.button.addEventListener("click", () => {
+                    this.#button = document.createElement("button");
+                    this.#button.setAttribute("tabindex", "0");
+                    this.#button.setAttribute("part", "button");
+                    this.#button.addEventListener("click", () => {
                         this.dispatchEvent(new CustomEvent(
                             "chordPushed",
                             {
                                 bubbles: true,
                                 detail: [
-                                    this.root,
-                                    this.third,
-                                    this.fifth,
-                                    this.octave
+                                    this.#root,
+                                    this.#third,
+                                    this.#fifth,
+                                    this.#octave
                                 ]
                             }
                         ));
@@ -587,23 +610,23 @@
                 }
 
                 updateButton() {
-                    const chordName = ChordHelper.nameChord(this.root, this.third, this.fifth);
-                    const chordSpelling = ChordHelper.spellChord(this.root, this.third, this.fifth);
-                    this.button.innerText = `${chordName} (${chordSpelling})`;
+                    const chordName = ChordHelper.nameChord(this.#root, this.#third, this.#fifth);
+                    const chordSpelling = ChordHelper.spellChord(this.#root, this.#third, this.#fifth);
+                    this.#button.innerText = `${chordName} (${chordSpelling})`;
                     if (chordName) {
-                        this.chord.appendChild(this.button);
-                    } else if (this.chord.contains(this.button)) {
-                        this.chord.removeChild(this.button);
+                        this.#chord.appendChild(this.#button);
+                    } else if (this.#chord.contains(this.#button)) {
+                        this.#chord.removeChild(this.#button);
                     }
                 }
 
                 attributeChangedCallback(name, oldValue, newValue) {
                     if (oldValue === newValue) return;
 
-                    if (name === "root") this.root = parseInt(newValue);
-                    if (name === "third") this.third = parseInt(newValue);
-                    if (name === "fifth") this.fifth = parseInt(newValue);
-                    if (name === "octave") this.octave = parseInt(newValue);
+                    if (name === "root") this.#root = parseInt(newValue);
+                    if (name === "third") this.#third = parseInt(newValue);
+                    if (name === "fifth") this.#fifth = parseInt(newValue);
+                    if (name === "octave") this.#octave = parseInt(newValue);
                     this.updateButton();
                 }
             });
@@ -710,11 +733,11 @@
             });
 
             customElements.define("octave-control", class extends HTMLElement {
-                octave;
-                disabled;
+                #octave;
+                #disabled;
 
-                upButton;
-                downButton;
+                #upButton;
+                #downButton;
 
                 static observedAttributes = ["octave", "disabled"];
 
@@ -723,10 +746,11 @@
 
                     const control = this.attachShadow({ mode: "closed" });
 
-                    this.upButton = document.createElement("button");
-                    this.upButton.setAttribute("part", "button");
-                    this.upButton.innerText = "Octave Up";
-                    this.upButton.addEventListener("click", () => {
+                    this.#upButton = document.createElement("button");
+                    this.#upButton.setAttribute("tabindex", "0");
+                    this.#upButton.setAttribute("part", "button");
+                    this.#upButton.innerText = "Octave Up";
+                    this.#upButton.addEventListener("click", () => {
                         this.dispatchEvent(new CustomEvent(
                             "octaveIncreased",
                             {
@@ -734,12 +758,13 @@
                             }
                         ));
                     });
-                    control.appendChild(this.upButton);
+                    control.appendChild(this.#upButton);
 
-                    this.downButton = document.createElement("button");
-                    this.downButton.setAttribute("part", "button");
-                    this.downButton.innerText = "Octave Down";
-                    this.downButton.addEventListener("click", () => {
+                    this.#downButton = document.createElement("button");
+                    this.#downButton.setAttribute("tabindex", "0");
+                    this.#downButton.setAttribute("part", "button");
+                    this.#downButton.innerText = "Octave Down";
+                    this.#downButton.addEventListener("click", () => {
                         this.dispatchEvent(new CustomEvent(
                             "octaveDecreased",
                             {
@@ -747,44 +772,45 @@
                             }
                         ));
                     });
-                    control.appendChild(this.downButton);
+                    control.appendChild(this.#downButton);
                 }
 
                 attributeChangedCallback(name, oldValue, newValue) {
                     if (oldValue === newValue) return;
 
                     if (name === "octave") {
-                        this.octave = parseInt(newValue);
+                        this.#octave = parseInt(newValue);
                         this.updateOctave();
                     }
 
                     if (name === "disabled") {
-                        this.disabled = newValue !== null;
+                        this.#disabled = newValue !== null;
                         this.updateOctave();
                     }
                 }
 
                 updateOctave() {
-                    this.downButton.disabled = this.disabled || this.octave <= -3;
-                    this.upButton.disabled = this.disabled || this.octave >= 3;
+                    this.#downButton.disabled = this.#disabled || this.#octave <= -3;
+                    this.#upButton.disabled = this.#disabled || this.#octave >= 3;
                 }
             });
 
             customElements.define("stop-editing-panel", class extends HTMLElement {
-                disabled;
-                panel;
-                button;
+                #disabled;
+                #panel;
+                #button;
 
                 static observedAttributes = ["disabled"];
 
                 constructor() {
                     super();
 
-                    this.panel = this.attachShadow({ mode: "closed" });
-                    this.button = document.createElement("button");
-                    this.button.setAttribute("part", "button");
-                    this.button.innerText = "Stop Editing";
-                    this.button.addEventListener("click", () => {
+                    this.#panel = this.attachShadow({ mode: "closed" });
+                    this.#button = document.createElement("button");
+                    this.#button.setAttribute("tabindex", "0");
+                    this.#button.setAttribute("part", "button");
+                    this.#button.innerText = "Stop Editing";
+                    this.#button.addEventListener("click", () => {
                         this.dispatchEvent(new CustomEvent(
                             "stopEditing",
                             {
@@ -792,23 +818,23 @@
                             }
                         ));
                     });
-                    this.panel.appendChild(this.button);
+                    this.#panel.appendChild(this.#button);
                 }
 
                 attributeChangedCallback(name, oldValue, newValue) {
                     if (oldValue === newValue) return;
 
                     if (name === "disabled") {
-                        this.disabled = newValue !== null;
+                        this.#disabled = newValue !== null;
                         this.updateButton();
                     }
                 }
 
                 updateButton() {
-                    if (this.disabled) {
-                        this.panel.removeChild(this.button);
+                    if (this.#disabled) {
+                        this.#panel.removeChild(this.#button);
                     } else {
-                        this.panel.appendChild(this.button);
+                        this.#panel.appendChild(this.#button);
                     }
                 }
             });
@@ -1158,6 +1184,9 @@
                 const chordGraph = document.querySelector("chord-graph");
                 const chordPicker = document.querySelector("chord-picker");
                 const chordSheet = document.querySelector("chord-sheet");
+                const volumeSlider = document.querySelector("#volume input");
+                volumeSlider.value = chordPlayer.volume * 100;
+                volumeSlider.addEventListener("input", () => chordPlayer.volume = volumeSlider.value / 100);
 
                 var editingIndex = undefined;
 
@@ -1284,6 +1313,10 @@
                 --edit-color: blue;
                 --border-radius: 0.4em;
                 --chord-width: 11em;
+                --button-background-color: oklch(from var(--theme-color) 94% 10% h);
+                --border-color: oklch(from var(--theme-color) 80% 20% h);
+                --border-width: 0.15rem;
+                --border: var(--border-width) solid var(--border-color);
             }
 
             body {
@@ -1309,6 +1342,14 @@
                 --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
             }
 
+            chord-picker,
+            chord-graph {
+                --button-background-color: oklch(from var(--theme-color) 94% 10% h);
+                --border-color: oklch(from var(--theme-color) 80% 20% h);
+                --border-width: 0.15rem;
+                --border: var(--border-width) solid var(--border-color);
+            }
+
             chord-picker[editing],
             chord-graph[editing] {
                 --theme-color: var(--edit-color);
@@ -1332,9 +1373,9 @@
                 }
 
                 &::part(chord-collection) {
-                    border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
+                    border: var(--border);
                     border-radius: var(--border-radius);
-                    background: oklch(from var(--theme-color) 98% 2% h);
+                    background-color: oklch(from var(--theme-color) 98% 2% h);
                     padding: 0 0.25em;
                 }
             }
@@ -1352,8 +1393,8 @@
             button,
             chord-picker::part(control),
             chord-graph::part(panel-button) {
-                border: 0.15em solid oklch(from var(--theme-color) 80% 20% h);
-                background: oklch(from var(--theme-color) 98% 2% h);
+                border: var(--border);
+                background-color: oklch(from var(--theme-color) 98% 2% h);
             }
 
             button,
@@ -1375,60 +1416,126 @@
                 line-height: 0.9em;
                 text-align: left;
                 cursor: pointer;
-                background: transparent;
+                background-color: transparent;
             }
 
             /* Pseudo-elements and nesting/is don't get along: https://github.com/w3c/csswg-drafts/issues/9702 */
-            button:focus:not(:hover, :active, :disabled),
-            chord-picker::part(control):focus:not(:hover, :active, :disabled),
-            chord-graph::part(button):focus:not(:hover, :active, :disabled)
+            button:focus-visible:not(:hover, :active, :disabled),
+            chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
+            chord-graph::part(button):focus-visible:not(:hover, :active, :disabled)
             {
-                background: oklch(from var(--theme-color) 94% 10% h);
+                background-color: var(--button-background-color);
             }
 
             button:hover:not(:active, :disabled),
             chord-picker::part(control):hover:not(:active, :disabled),
             chord-graph::part(button):hover:not(:active, :disabled)
             {
-                background: oklch(from var(--theme-color) 90% 10% h);
+                background-color: oklch(from var(--theme-color) 90% 10% h);
             }
 
             button:active:not(:disabled),
             chord-picker::part(button):active:not(:disabled),
             chord-graph::part(button):active:not(:disabled)
             {
-                background: oklch(from var(--theme-color) 94% 10% h);
+                background-color: var(--button-background-color);
             }
 
             button:disabled,
             chord-graph::part(panel-button):disabled {
                 color: oklch(from var(--theme-color) 80% 10% h);
                 border-color: oklch(from var(--theme-color) 90% 10% h);
-                background: oklch(from var(--theme-color) 95% 2% h);
+                background-color: oklch(from var(--theme-color) 95% 2% h);
+            }
+
+            #volume {
+                width: 15rem;
+                height: 1.2rem;
+                border-radius: 0.6rem;
+                overflow: hidden;
+            }
+
+            #volume::before {
+                content: "";
+                z-index: -1;
+                box-sizing: border-box;
+                display: block;
+                border-style: solid;
+                border-width: 0.6rem 15rem 0.6rem 0;
+                border-color: transparent var(--border-color) transparent transparent;
+                width: 15rem;
+                height: 1.2rem;
+                margin-bottom: -1.2rem;
+            }
+
+            input[type="range"] {
+                margin: 0;
+                -webkit-appearance: none;
+                appearance: none;
+                background-color: transparent;
+                cursor: pointer;
+                width: 100%;
+                height: 100%;
+            }
+
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                box-sizing: border-box;
+                background-color: var(--button-background-color);
+                border: var(--border);
+                border-radius: 50%;
+                height: 1.2rem;
+                width: 1.2rem;
+            }
+
+            input[type="range"]::-moz-range-thumb {
+                box-sizing: border-box;
+                background-color: var(--button-background-color);
+                border: var(--border);
+                border-radius: 50%;
+                height: 1.2rem;
+                width: 1.2rem;
+            }
+
+            input[type="range"]:focus-visible {
+                outline: none;
+            }
+
+            input[type="range"]:focus-visible::-webkit-slider-thumb {
+                outline: auto;
+            }
+
+            input[type="range"]:focus-visible::-moz-range-thumb {
+                outline: auto;
             }
         </style>
     </head>
     <body>
         <h1>Chord Dancer</h1>
+        <div id="volume" >
+            <input type="range" min="0" max="100" value="100" tabindex="0">
+        </div>
         <chord-picker></chord-picker>
         <chord-graph></chord-graph>
         <div class="buttons">
-            <button type="button" id="undo">Undo</button>
-            <button type="button" id="redo">Redo</button>
+            <button id="undo" tabindex="0">Undo</button>
+            <button id="redo" tabindex="0">Redo</button>
         </div>
         <div class="buttons">
-            <button type="button" id="play">Play</button>
-            <button type="button" id="stop">Stop</button>
-            <button type="button" id="clear">Clear</button>
+            <button id="play" tabindex="0">Play</button>
+            <button id="stop" tabindex="0">Stop</button>
+            <button id="clear" tabindex="0">Clear</button>
         </div>
         <p>
             To do:
             <ol>
-                <li>Handle audio context auto-closing</li>
-                <li>"Stop editing" button</li>
-                <li>Volume slider</li>
-                <li>MusicXML export</li>
+                <li>Turn volume slider into a component</li>
+                <li>No-op edits shouldn't add to the undo stack</li>
                 <li>Save/load</li>
+                <li>MusicXML export</li>
+                <li>MIDI export</li>
+                <li>Fix audio context muting after idle time in Safari</li>
             </ol>
         </p>
         <chord-sheet></chord-sheet>
