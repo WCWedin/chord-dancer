@@ -465,6 +465,13 @@
                     super();
 
                     const picker = this.attachShadow({ mode: "closed" });
+                    const style = new CSSStyleSheet();
+                    style.insertRule(`
+                    button {
+                        width: var(--chord-width);
+                        line-height: 1.2em;
+                    }`);
+                    picker.adoptedStyleSheets = [style];
 
                     { // root
                         this.#rootPicker = document.createElement("select");
@@ -864,6 +871,55 @@
                     super();
 
                     const root = this.attachShadow({ mode: "closed" });
+                    const style = new CSSStyleSheet();
+                    style.insertRule(`
+                    :host > * {
+                        display: table;
+                        border-spacing: 0.75em;
+
+                        & > * {
+                            display: table-row;
+
+                            & > * {
+                                display: table-cell;
+                                vertical-align: middle;
+                                width: var(--chord-width);
+                                height: 6em;
+                            }
+                        }
+                    }`);
+                    style.insertRule(`
+                    chord-collection {
+                        border: var(--border);
+                        border-radius: var(--border-radius);
+                        background-color: var(--button-background-color);
+                        padding: 0 0.25em;
+                    }`);
+                    style.insertRule(`
+                    chord-collection {
+                        border: var(--border);
+                        border-radius: var(--border-radius);
+                        background-color: var(--button-background-color);
+                        padding: 0 0.25em;
+                    }`);
+                    style.insertRule(`
+                    stop-editing-panel::part(button),
+                    chord-collection::part(button),
+                    octave-control::part(button) {
+                        margin: 0.25em 0;
+                        width: 100%;
+                    }`);
+                    style.insertRule(`
+                    chord-collection::part(button) {
+                        border: 0;
+                        line-height: 0.9em;
+                        text-align: left;
+                        cursor: pointer;
+                        background-color: transparent;
+                    }`);
+
+                    root.adoptedStyleSheets = [style];
+
                     root.addEventListener("chordPushed", (event) =>  this.dispatchEvent(new CustomEvent(
                         "chordPushed",
                         {
@@ -891,27 +947,19 @@
                     )));
 
                     const table = document.createElement("div");
-                    table.setAttribute("part", "table");
 
-                    const stopEditingPanelParts = "stop-editing-panel cell";
                     const stopEditingPanelExportedParts = "button, button:panel-button";
-                    const octaveControlParts = "octave-control cell";
                     const octaveControlExportedParts = "button, button:panel-button";
-                    const chordCollectionParts = "chord-collection cell"
-                    const chordCollectionExportedParts = "button, button:chord-button";
+                    const chordCollectionExportedParts = "button";
 
                     const topRow = document.createElement("div");
-                    topRow.setAttribute("part", "row");
                     this.stopEditingPanel = document.createElement("stop-editing-panel");
                     this.stopEditingPanel.setAttribute("exportparts", stopEditingPanelExportedParts);
-                    this.stopEditingPanel.setAttribute("part", stopEditingPanelParts);
                     this.stopEditingPanel.setAttribute("disabled", "");
                     this.raiseRootCollection = document.createElement("chord-collection");
                     this.raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.raiseRootCollection.setAttribute("part", chordCollectionParts);
                     this.raiseThirdCollection = document.createElement("chord-collection");
                     this.raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.raiseThirdCollection.setAttribute("part", chordCollectionParts);
                     topRow.append(
                         this.stopEditingPanel,
                         this.raiseRootCollection,
@@ -919,16 +967,12 @@
                     );
 
                     const middleRow = document.createElement("div");
-                    middleRow.setAttribute("part", "row");
                     this.lowerFifthCollection = document.createElement("chord-collection");
                     this.lowerFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.lowerFifthCollection.setAttribute("part", chordCollectionParts);
                     this.currentChordCollection = document.createElement("chord-collection");
                     this.currentChordCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.currentChordCollection.setAttribute("part", chordCollectionParts);
                     this.raiseFifthCollection = document.createElement("chord-collection");
                     this.raiseFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.raiseFifthCollection.setAttribute("part", chordCollectionParts);
                     middleRow.append(
                         this.lowerFifthCollection,
                         this.currentChordCollection,
@@ -936,16 +980,12 @@
                     );
                     
                     const bottomRow = document.createElement("div");
-                    bottomRow.setAttribute("part", "row");
                     this.lowerThirdCollection = document.createElement("chord-collection");
                     this.lowerThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.lowerThirdCollection.setAttribute("part", chordCollectionParts);
                     this.lowerRootCollection = document.createElement("chord-collection");
                     this.lowerRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.lowerRootCollection.setAttribute("part", chordCollectionParts);
                     this.octaveControl = document.createElement("octave-control");
                     this.octaveControl.setAttribute("exportparts", octaveControlExportedParts);
-                    this.octaveControl.setAttribute("part", octaveControlParts);
                     bottomRow.append(
                         this.lowerThirdCollection,
                         this.lowerRootCollection,
@@ -1031,26 +1071,30 @@
 
                     const root = this.attachShadow({ mode: "closed" });
                     const style = new CSSStyleSheet();
-                    style.insertRule(`div {
+                    style.insertRule(`
+                    div {
                         display: flex;
                         justify-content: center;
                         width: 100% !important;
                     }`);
-                    style.insertRule(`.vf-stavenote.selected:not(.playing) {
+                    style.insertRule(`
+                    .vf-stavenote.selected:not(.playing) {
                         fill: var(--selected-color);
 
                         & + text {
                             fill: var(--selected-text-color);
                         }
                     }`);
-                    style.insertRule(`.vf-stavenote.playing {
+                    style.insertRule(`
+                    .vf-stavenote.playing {
                         fill: var(--playing-color);
 
                         & + text {
                             fill: var(--playing-text-color);
                         }
                     }`);
-                    style.insertRule(`.vf-stavenote, text {
+                    style.insertRule(`
+                    .vf-stavenote, text {
                         cursor: pointer;
                     }`);
                     root.adoptedStyleSheets = [style];
@@ -1313,9 +1357,20 @@
                 --edit-color: blue;
                 --border-radius: 0.4em;
                 --chord-width: 11em;
-                --button-background-color: oklch(from var(--theme-color) 94% 10% h);
-                --border-color: oklch(from var(--theme-color) 80% 20% h);
                 --border-width: 0.15rem;
+            }
+
+            html,
+            chord-picker,
+            chord-graph {
+                --button-text-color: oklch(from var(--theme-color) 30% 30% h);
+                --button-background-color: oklch(from var(--theme-color) 98% 2% h);
+                --button-active-background-color: oklch(from var(--theme-color) 94% 10% h);
+                --button-hover-background-color: oklch(from var(--theme-color) 90% 10% h);
+                --border-color: oklch(from var(--theme-color) 80% 20% h);
+                --button-disabled-text-color: oklch(from var(--theme-color) 80% 10% h);
+                --button-disabled-border-color: oklch(from var(--theme-color) 90% 10% h);
+                --button-disabled-background-color: oklch(from var(--theme-color) 95% 2% h);
                 --border: var(--border-width) solid var(--border-color);
             }
 
@@ -1342,42 +1397,9 @@
                 --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
             }
 
-            chord-picker,
-            chord-graph {
-                --button-background-color: oklch(from var(--theme-color) 94% 10% h);
-                --border-color: oklch(from var(--theme-color) 80% 20% h);
-                --border-width: 0.15rem;
-                --border: var(--border-width) solid var(--border-color);
-            }
-
             chord-picker[editing],
             chord-graph[editing] {
                 --theme-color: var(--edit-color);
-            }
-
-            chord-graph {
-                &::part(table) {
-                    display: table;
-                    border-spacing: 0.75em;
-                }
-
-                &::part(row) {
-                    display: table-row;
-                }
-
-                &::part(cell) {
-                    display: table-cell;
-                    vertical-align: middle;
-                    width: var(--chord-width);
-                    height: 6em;
-                }
-
-                &::part(chord-collection) {
-                    border: var(--border);
-                    border-radius: var(--border-radius);
-                    background-color: oklch(from var(--theme-color) 98% 2% h);
-                    padding: 0 0.25em;
-                }
             }
 
             button,
@@ -1385,67 +1407,49 @@
                 margin: 0 0.4em;
             }
 
-            chord-picker::part(button) {
-                width: var(--chord-width);
-                line-height: 1.2em;
-            }
-
             button,
             chord-picker::part(control),
             chord-graph::part(panel-button) {
                 border: var(--border);
-                background-color: oklch(from var(--theme-color) 98% 2% h);
+                background-color: var(--button-background-color);
             }
 
             button,
             chord-picker::part(control),
             chord-graph::part(button) {
-                color: oklch(from var(--theme-color) 30% 30% h);
+                color: var(--button-text-color);
                 border-radius: var(--border-radius);
                 padding: 0.25em 0.4em;
                 font-size: 1em;
             }
 
-            chord-graph::part(button) {
-                margin: 0.25em 0;
-                width: 100%;
-            }
-
-            chord-graph::part(chord-button) {
-                border: 0;
-                line-height: 0.9em;
-                text-align: left;
-                cursor: pointer;
-                background-color: transparent;
-            }
-
-            /* Pseudo-elements and nesting/is don't get along: https://github.com/w3c/csswg-drafts/issues/9702 */
+            /* Nesting/is on pseudo-elements isn't supported: https://github.com/w3c/csswg-drafts/issues/9702 */
             button:focus-visible:not(:hover, :active, :disabled),
             chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
             chord-graph::part(button):focus-visible:not(:hover, :active, :disabled)
             {
-                background-color: var(--button-background-color);
+                background-color: var(--button-active-background-color);
             }
 
             button:hover:not(:active, :disabled),
             chord-picker::part(control):hover:not(:active, :disabled),
             chord-graph::part(button):hover:not(:active, :disabled)
             {
-                background-color: oklch(from var(--theme-color) 90% 10% h);
+                background-color: var(--button-hover-background-color);
             }
 
             button:active:not(:disabled),
             chord-picker::part(button):active:not(:disabled),
             chord-graph::part(button):active:not(:disabled)
             {
-                background-color: var(--button-background-color);
+                background-color: var(--button-active-background-color);
             }
 
             button:disabled,
             chord-graph::part(panel-button):disabled {
-                color: oklch(from var(--theme-color) 80% 10% h);
-                border-color: oklch(from var(--theme-color) 90% 10% h);
-                background-color: oklch(from var(--theme-color) 95% 2% h);
+                color: var(--button-disabled-text-color);
+                border-color: var(--button-disabled-border-color);
+                background-color: var(--button-disabled-background-color);
             }
 
             #volume {
@@ -1453,61 +1457,67 @@
                 height: 1.2rem;
                 border-radius: 0.6rem;
                 overflow: hidden;
-            }
 
-            #volume::before {
-                content: "";
-                z-index: -1;
-                box-sizing: border-box;
-                display: block;
-                border-style: solid;
-                border-width: 0.6rem 15rem 0.6rem 0;
-                border-color: transparent var(--border-color) transparent transparent;
-                width: 15rem;
-                height: 1.2rem;
-                margin-bottom: -1.2rem;
-            }
+                &::before {
+                    content: "";
+                    z-index: -1;
+                    box-sizing: border-box;
+                    display: block;
+                    border-style: solid;
+                    border-width: 0.6rem 15rem 0.6rem 0;
+                    border-color: transparent var(--border-color) transparent transparent;
+                    width: 15rem;
+                    height: 1.2rem;
+                    margin-bottom: -1.2rem;
+                }
 
-            input[type="range"] {
-                margin: 0;
-                -webkit-appearance: none;
-                appearance: none;
-                background-color: transparent;
-                cursor: pointer;
-                width: 100%;
-                height: 100%;
-            }
+                input[type="range"] {
+                    margin: 0;
+                    -webkit-appearance: none;
+                    appearance: none;
+                    background-color: transparent;
+                    cursor: pointer;
+                    width: 100%;
+                    height: 100%;
 
-            input[type="range"]::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                appearance: none;
-                box-sizing: border-box;
-                background-color: var(--button-background-color);
-                border: var(--border);
-                border-radius: 50%;
-                height: 1.2rem;
-                width: 1.2rem;
-            }
+                    &::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        box-sizing: border-box;
+                        background-color: var(--button-background-color);
+                        border: var(--border);
+                        border-radius: 50%;
+                        height: 1.2rem;
+                        width: 1.2rem;
+                    }
 
-            input[type="range"]::-moz-range-thumb {
-                box-sizing: border-box;
-                background-color: var(--button-background-color);
-                border: var(--border);
-                border-radius: 50%;
-                height: 1.2rem;
-                width: 1.2rem;
-            }
+                    &::-moz-range-thumb {
+                        box-sizing: border-box;
+                        background-color: var(--button-background-color);
+                        border: var(--border);
+                        border-radius: 50%;
+                        height: 1.2rem;
+                        width: 1.2rem;
+                    }
+                }
 
-            input[type="range"]:focus-visible {
-                outline: none;
-            }
+                /* Safari gets confused when this style is nested. */
+                input[type="range"]:focus-visible {
+                    outline: none;
 
-            input[type="range"]:focus-visible::-webkit-slider-thumb {
-                outline: auto;
-            }
+                    &::-webkit-slider-thumb {
+                        outline-width: var(--border-width);
+                        outline-style: solid;
+                        outline-color: -webkit-focus-ring-color;
+                        outline-offset: calc(-1 * var(--border-width));
+                        box-shadow: white 0 0 0 calc(var(--border-width) / 2);
+                    }
 
-            input[type="range"]:focus-visible::-moz-range-thumb {
-                outline: auto;
+                    &::-moz-range-thumb {
+                        outline-style: auto;
+                        outline-offset: calc(-1 * var(--border-width));
+                    }
+                }
             }
         </style>
     </head>
