@@ -743,35 +743,35 @@
             });
 
             customElements.define("chord-collection", class extends HTMLElement {
-                root;
-                third;
-                fifth;
-                octave;
+                #root;
+                #third;
+                #fifth;
+                #octave;
 
-                collection;
-                firstChord;
-                secondChord;
-                thirdChord;
+                #collection;
+                #firstChord;
+                #secondChord;
+                #thirdChord;
 
                 static observedAttributes = ["root", "third", "fifth", "octave"];
 
                 constructor() {
                     super();
 
-                    this.collection = this.attachShadow({ mode: "closed" });
+                    this.#collection = this.attachShadow({ mode: "closed" });
 
-                    this.firstChord = document.createElement("chord-button");
-                    this.firstChord.setAttribute("exportparts", "button");
-                    this.firstChord.setAttribute("part", "chord");
-                    this.firstChord.addEventListener("chordPushed", event => this.pushChord(event));
-                    this.secondChord = document.createElement("chord-button");
-                    this.secondChord.setAttribute("exportparts", "button");
-                    this.secondChord.setAttribute("part", "chord");
-                    this.secondChord.addEventListener("chordPushed", event => this.pushChord(event));
-                    this.thirdChord = document.createElement("chord-button");
-                    this.thirdChord.setAttribute("exportparts", "button");
-                    this.thirdChord.setAttribute("part", "chord");
-                    this.thirdChord.addEventListener("chordPushed", event => this.pushChord(event));
+                    this.#firstChord = document.createElement("chord-button");
+                    this.#firstChord.setAttribute("exportparts", "button");
+                    this.#firstChord.setAttribute("part", "chord");
+                    this.#firstChord.addEventListener("chordPushed", event => this.pushChord(event));
+                    this.#secondChord = document.createElement("chord-button");
+                    this.#secondChord.setAttribute("exportparts", "button");
+                    this.#secondChord.setAttribute("part", "chord");
+                    this.#secondChord.addEventListener("chordPushed", event => this.pushChord(event));
+                    this.#thirdChord = document.createElement("chord-button");
+                    this.#thirdChord.setAttribute("exportparts", "button");
+                    this.#thirdChord.setAttribute("part", "chord");
+                    this.#thirdChord.addEventListener("chordPushed", event => this.pushChord(event));
                 }
 
                 pushChord(event) {
@@ -788,58 +788,58 @@
                     if (oldValue === newValue) return;
 
                     if (name === "root") {
-                        this.root = parseInt(newValue);
+                        this.#root = parseInt(newValue);
                         this.updateChords();
                     }
                     if (name === "third") {
-                        this.third = parseInt(newValue);
+                        this.#third = parseInt(newValue);
                         this.updateChords();
                     }
                     if (name === "fifth") {
-                        this.fifth = parseInt(newValue);
+                        this.#fifth = parseInt(newValue);
                         this.updateChords();
                     }
                     if (name === "octave") {
-                        this.octave = parseInt(newValue);
+                        this.#octave = parseInt(newValue);
                         this.updateOctave();
                     }
                 }
 
                 updateChords() {
-                    const inversions = ChordHelper.findInversions(this.root, this.third, this.fifth);
+                    const inversions = ChordHelper.findInversions(this.#root, this.#third, this.#fifth);
 
                     if (inversions[0]) {
-                        this.firstChord.setAttribute("root", inversions[0][0]);
-                        this.firstChord.setAttribute("third", inversions[0][1]);
-                        this.firstChord.setAttribute("fifth", inversions[0][2]);
-                        this.collection.appendChild(this.firstChord);
-                    } else if (this.collection.contains(this.firstChord)) {
-                        this.collection.removeChild(this.firstChord);
+                        this.#firstChord.setAttribute("root", inversions[0][0]);
+                        this.#firstChord.setAttribute("third", inversions[0][1]);
+                        this.#firstChord.setAttribute("fifth", inversions[0][2]);
+                        this.#collection.appendChild(this.#firstChord);
+                    } else if (this.#collection.contains(this.#firstChord)) {
+                        this.#collection.removeChild(this.#firstChord);
                     }
 
                     if (inversions[1]) {
-                        this.secondChord.setAttribute("root", inversions[1]?.[0]);
-                        this.secondChord.setAttribute("third", inversions[1]?.[1]);
-                        this.secondChord.setAttribute("fifth", inversions[1]?.[2]);
-                        this.collection.appendChild(this.secondChord);
-                    } else if (this.collection.contains(this.secondChord)) {
-                        this.collection.removeChild(this.secondChord);
+                        this.#secondChord.setAttribute("root", inversions[1]?.[0]);
+                        this.#secondChord.setAttribute("third", inversions[1]?.[1]);
+                        this.#secondChord.setAttribute("fifth", inversions[1]?.[2]);
+                        this.#collection.appendChild(this.#secondChord);
+                    } else if (this.#collection.contains(this.#secondChord)) {
+                        this.#collection.removeChild(this.#secondChord);
                     }
 
                     if (inversions[2]) {
-                        this.thirdChord.setAttribute("root", inversions[2]?.[0]);
-                        this.thirdChord.setAttribute("third", inversions[2]?.[1]);
-                        this.thirdChord.setAttribute("fifth", inversions[2]?.[2]);
-                        this.collection.appendChild(this.thirdChord);
-                    } else if (this.collection.contains(this.thirdChord)) {
-                        this.collection.removeChild(this.thirdChord);
+                        this.#thirdChord.setAttribute("root", inversions[2]?.[0]);
+                        this.#thirdChord.setAttribute("third", inversions[2]?.[1]);
+                        this.#thirdChord.setAttribute("fifth", inversions[2]?.[2]);
+                        this.#collection.appendChild(this.#thirdChord);
+                    } else if (this.#collection.contains(this.#thirdChord)) {
+                        this.#collection.removeChild(this.#thirdChord);
                     }
                 }
 
                 updateOctave() {
-                    this.firstChord.setAttribute("octave", this.octave);
-                    this.secondChord.setAttribute("octave", this.octave);
-                    this.thirdChord.setAttribute("octave", this.octave);
+                    this.#firstChord.setAttribute("octave", this.#octave);
+                    this.#secondChord.setAttribute("octave", this.#octave);
+                    this.#thirdChord.setAttribute("octave", this.#octave);
                 }
             });
 
@@ -951,30 +951,30 @@
             });
 
             customElements.define("chord-graph", class extends HTMLElement {
-                root;
-                third;
-                fifth;
-                octave;
-                activeChord;
-                editing;
+                #root;
+                #third;
+                #fifth;
+                #octave;
+                #activeChord;
+                #editing;
 
-                currentChordCollection;
-                raiseRootCollection;
-                lowerRootCollection;
-                raiseThirdCollection;
-                lowerThirdCollection;
-                raiseFifthCollection;
-                lowerFifthCollection;
+                #currentChordCollection;
+                #raiseRootCollection;
+                #lowerRootCollection;
+                #raiseThirdCollection;
+                #lowerThirdCollection;
+                #raiseFifthCollection;
+                #lowerFifthCollection;
 
-                stopEditingPanel;
-                octaveControl;
+                #stopEditingPanel;
+                #octaveControl;
 
                 static observedAttributes = ["root", "third", "fifth", "octave", "active-chord", "editing"];
 
                 constructor() {
                     super();
 
-                    const root = this.attachShadow({ mode: "closed" });
+                    const graph = this.attachShadow({ mode: "closed" });
                     const style = new CSSStyleSheet();
                     style.insertRule(`
                     :host > * {
@@ -1021,29 +1021,28 @@
                         cursor: pointer;
                         background-color: transparent;
                     }`);
+                    graph.adoptedStyleSheets = [style];
 
-                    root.adoptedStyleSheets = [style];
-
-                    root.addEventListener("chordPushed", (event) =>  this.dispatchEvent(new CustomEvent(
+                    graph.addEventListener("chordPushed", (event) =>  this.dispatchEvent(new CustomEvent(
                         "chordPushed",
                         {
                             bubbles: true,
                             detail: event.detail
                         }
                     )));
-                    root.addEventListener("octaveIncreased", () => this.dispatchEvent(new CustomEvent(
+                    graph.addEventListener("octaveIncreased", () => this.dispatchEvent(new CustomEvent(
                         "octaveIncreased",
                         {
                             bubbles: true
                         }
                     )));
-                    root.addEventListener("octaveDecreased", () => this.dispatchEvent(new CustomEvent(
+                    graph.addEventListener("octaveDecreased", () => this.dispatchEvent(new CustomEvent(
                         "octaveDecreased",
                         {
                             bubbles: true
                         }
                     )));
-                    root.addEventListener("stopEditing", () => this.dispatchEvent(new CustomEvent(
+                    graph.addEventListener("stopEditing", () => this.dispatchEvent(new CustomEvent(
                         "stopEditing",
                         {
                             bubbles: true
@@ -1057,75 +1056,75 @@
                     const chordCollectionExportedParts = "button";
 
                     const topRow = document.createElement("div");
-                    this.stopEditingPanel = document.createElement("stop-editing-panel");
-                    this.stopEditingPanel.setAttribute("exportparts", stopEditingPanelExportedParts);
-                    this.stopEditingPanel.setAttribute("disabled", "");
-                    this.raiseRootCollection = document.createElement("chord-collection");
-                    this.raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.raiseThirdCollection = document.createElement("chord-collection");
-                    this.raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#stopEditingPanel = document.createElement("stop-editing-panel");
+                    this.#stopEditingPanel.setAttribute("exportparts", stopEditingPanelExportedParts);
+                    this.#stopEditingPanel.setAttribute("disabled", "");
+                    this.#raiseRootCollection = document.createElement("chord-collection");
+                    this.#raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#raiseThirdCollection = document.createElement("chord-collection");
+                    this.#raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     topRow.append(
-                        this.stopEditingPanel,
-                        this.raiseRootCollection,
-                        this.raiseThirdCollection
+                        this.#stopEditingPanel,
+                        this.#raiseRootCollection,
+                        this.#raiseThirdCollection
                     );
 
                     const middleRow = document.createElement("div");
-                    this.lowerFifthCollection = document.createElement("chord-collection");
-                    this.lowerFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.currentChordCollection = document.createElement("chord-collection");
-                    this.currentChordCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.raiseFifthCollection = document.createElement("chord-collection");
-                    this.raiseFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#lowerFifthCollection = document.createElement("chord-collection");
+                    this.#lowerFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#currentChordCollection = document.createElement("chord-collection");
+                    this.#currentChordCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#raiseFifthCollection = document.createElement("chord-collection");
+                    this.#raiseFifthCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     middleRow.append(
-                        this.lowerFifthCollection,
-                        this.currentChordCollection,
-                        this.raiseFifthCollection
+                        this.#lowerFifthCollection,
+                        this.#currentChordCollection,
+                        this.#raiseFifthCollection
                     );
                     
                     const bottomRow = document.createElement("div");
-                    this.lowerThirdCollection = document.createElement("chord-collection");
-                    this.lowerThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.lowerRootCollection = document.createElement("chord-collection");
-                    this.lowerRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
-                    this.octaveControl = document.createElement("octave-control");
-                    this.octaveControl.setAttribute("exportparts", octaveControlExportedParts);
+                    this.#lowerThirdCollection = document.createElement("chord-collection");
+                    this.#lowerThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#lowerRootCollection = document.createElement("chord-collection");
+                    this.#lowerRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
+                    this.#octaveControl = document.createElement("octave-control");
+                    this.#octaveControl.setAttribute("exportparts", octaveControlExportedParts);
                     bottomRow.append(
-                        this.lowerThirdCollection,
-                        this.lowerRootCollection,
-                        this.octaveControl
+                        this.#lowerThirdCollection,
+                        this.#lowerRootCollection,
+                        this.#octaveControl
                     );
 
                     table.append(topRow, middleRow, bottomRow);
-                    root.append(table);
+                    graph.append(table);
                 }
                 
                 attributeChangedCallback(name, oldValue, newValue) {
                     if (oldValue === newValue) return;
 
                     if (name === "root") {
-                        this.root = parseInt(newValue);
+                        this.#root = parseInt(newValue);
                         this.updateChordCollections();
                     }
                     if (name === "third") {
-                        this.third = parseInt(newValue);
+                        this.#third = parseInt(newValue);
                         this.updateChordCollections();
                     }
                     if (name === "fifth") {
-                        this.fifth = parseInt(newValue);
+                        this.#fifth = parseInt(newValue);
                         this.updateChordCollections();
                     }
                     if (name === "octave") {
-                        this.octave = parseInt(newValue);
+                        this.#octave = parseInt(newValue);
                         this.updateChordCollections();
                         this.updateOctave();
                     }
                     if (name === "active-chord") {
-                        this.activeChord = newValue !== null;
+                        this.#activeChord = newValue !== null;
                         this.updateOctave();
                     }
                     if (name === "editing") {
-                        this.editing = newValue !== null;
+                        this.#editing = newValue !== null;
                         this.updateStopEditingPanel();
                     }
                 }
@@ -1138,29 +1137,29 @@
                 }
 
                 updateChordCollections() {
-                    this.updateChordCollection(this.raiseRootCollection, ...ChordHelper.raiseRoot(this.root, this.third, this.fifth), this.octave);
-                    this.updateChordCollection(this.raiseThirdCollection, ...ChordHelper.raiseThird(this.root, this.third, this.fifth), this.octave);
-                    this.updateChordCollection(this.lowerFifthCollection, ...ChordHelper.lowerFifth(this.root, this.third, this.fifth), this.octave);
-                    this.updateChordCollection(this.currentChordCollection, this.root, this.third, this.fifth, this.octave);
-                    this.updateChordCollection(this.raiseFifthCollection, ...ChordHelper.raiseFifth(this.root, this.third, this.fifth), this.octave);
-                    this.updateChordCollection(this.lowerThirdCollection, ...ChordHelper.lowerThird(this.root, this.third, this.fifth), this.octave);
-                    this.updateChordCollection(this.lowerRootCollection, ...ChordHelper.lowerRoot(this.root, this.third, this.fifth), this.octave);
+                    this.updateChordCollection(this.#raiseRootCollection, ...ChordHelper.raiseRoot(this.#root, this.#third, this.#fifth), this.#octave);
+                    this.updateChordCollection(this.#raiseThirdCollection, ...ChordHelper.raiseThird(this.#root, this.#third, this.#fifth), this.#octave);
+                    this.updateChordCollection(this.#lowerFifthCollection, ...ChordHelper.lowerFifth(this.#root, this.#third, this.#fifth), this.#octave);
+                    this.updateChordCollection(this.#currentChordCollection, this.#root, this.#third, this.#fifth, this.#octave);
+                    this.updateChordCollection(this.#raiseFifthCollection, ...ChordHelper.raiseFifth(this.#root, this.#third, this.#fifth), this.#octave);
+                    this.updateChordCollection(this.#lowerThirdCollection, ...ChordHelper.lowerThird(this.#root, this.#third, this.#fifth), this.#octave);
+                    this.updateChordCollection(this.#lowerRootCollection, ...ChordHelper.lowerRoot(this.#root, this.#third, this.#fifth), this.#octave);
                 }
 
                 updateOctave() {
-                    if (this.activeChord) {
-                        this.octaveControl.removeAttribute("disabled");
+                    if (this.#activeChord) {
+                        this.#octaveControl.removeAttribute("disabled");
                     } else {
-                        this.octaveControl.setAttribute("disabled", "");
+                        this.#octaveControl.setAttribute("disabled", "");
                     }
-                    this.octaveControl.setAttribute("octave", this.octave);
+                    this.#octaveControl.setAttribute("octave", this.#octave);
                 }
 
                 updateStopEditingPanel() {
-                    if (this.editing) {
-                        this.stopEditingPanel.removeAttribute("disabled");
+                    if (this.#editing) {
+                        this.#stopEditingPanel.removeAttribute("disabled");
                     } else {
-                        this.stopEditingPanel.setAttribute("disabled", "");
+                        this.#stopEditingPanel.setAttribute("disabled", "");
                     }
                 }
             });
@@ -1173,7 +1172,7 @@
                 constructor() {
                     super();
 
-                    const root = this.attachShadow({ mode: "closed" });
+                    const sheet = this.attachShadow({ mode: "closed" });
                     const style = new CSSStyleSheet();
                     style.insertRule(`
                     div {
@@ -1201,13 +1200,13 @@
                     .vf-stavenote, text {
                         cursor: pointer;
                     }`);
-                    root.adoptedStyleSheets = [style];
+                    sheet.adoptedStyleSheets = [style];
                     this.#container = document.createElement("div");
                     this.#container.addEventListener("click", () => {
                         this.clearSelection();
                         this.dispatchEvent(new CustomEvent("selectionCleared"));
                     });
-                    root.appendChild(this.#container);
+                    sheet.appendChild(this.#container);
 
                     const resizeObserver = new ResizeObserver((entries) => {
                         this.#width = entries[0].contentBoxSize[0].inlineSize;
@@ -1592,6 +1591,7 @@
             To do:
             <ol>
                 <li>Save/load</li>
+                <li>Insert/delete</li>
                 <li>MusicXML export</li>
                 <li>MIDI export</li>
                 <li>Fix audio context muting after idle time in Safari</li>
