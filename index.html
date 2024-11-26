@@ -60,6 +60,10 @@
                 }
 
                 edit(index, chord) {
+                    if (this.#currentChords[index].every((v, i) => v === chord[i])) {
+                        return;
+                    }
+
                     this.#pushState([
                         ...this.#currentChords.slice(0, index),
                         chord,
@@ -148,7 +152,7 @@
                 }
 
                 stopChord() {
-                    if(this.#chordGain) {
+                    if (this.#chordGain) {
                         this.#chordGain.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + 0.1);
                         this.#chordGain = undefined;
                     }
@@ -218,7 +222,6 @@
 
                     function playIndex(index) {
                         if (stopSignalSent == false) {
-
                             if (index < chords.length) {
                                 thisPlayer.dispatchEvent(new CustomEvent("chordStarted", { detail: { index } }));
                                 thisPlayer.#playChord(
@@ -451,6 +454,107 @@
                     });
                 }
             }
+
+            customElements.define("volume-slider", class extends HTMLElement {
+                #input;
+
+                constructor() {
+                    super();
+
+                    const slider = this.attachShadow({ mode: "closed" });
+                    const style = new CSSStyleSheet();
+                    style.insertRule(`
+                    :host {
+                        width: 15rem;
+                        height: 1.2rem;
+                        border-radius: 0.6rem;
+                        overflow: hidden;
+
+                        &::before {
+                            content: "";
+                            z-index: -1;
+                            box-sizing: border-box;
+                            display: block;
+                            border-style: solid;
+                            border-width: 0.6rem 15rem 0.6rem 0;
+                            border-color: transparent var(--border-color) transparent transparent;
+                            width: 15rem;
+                            height: 1.2rem;
+                            margin-bottom: -1.2rem;
+                        }
+
+                        input[type="range"] {
+                            margin: 0;
+                            -webkit-appearance: none;
+                            appearance: none;
+                            background-color: transparent;
+                            cursor: pointer;
+                            width: 100%;
+                            height: 100%;
+
+                            &::-webkit-slider-thumb {
+                                -webkit-appearance: none;
+                                appearance: none;
+                                box-sizing: border-box;
+                                background-color: var(--button-background-color);
+                                border: var(--border);
+                                border-radius: 50%;
+                                height: 1.2rem;
+                                width: 1.2rem;
+                            }
+
+                            &::-moz-range-thumb {
+                                box-sizing: border-box;
+                                background-color: var(--button-background-color);
+                                border: var(--border);
+                                border-radius: 50%;
+                                height: 1.2rem;
+                                width: 1.2rem;
+                            }
+                        }
+
+                        /* Safari gets confused when this style is nested. */
+                        input[type="range"]:focus-visible {
+                            outline: none;
+
+                            &::-webkit-slider-thumb {
+                                outline-width: var(--border-width);
+                                outline-style: solid;
+                                outline-color: -webkit-focus-ring-color;
+                                outline-offset: calc(-1 * var(--border-width));
+                                box-shadow: white 0 0 0 calc(var(--border-width) / 2);
+                            }
+
+                            &::-moz-range-thumb {
+                                outline-style: auto;
+                                outline-offset: calc(-1 * var(--border-width));
+                            }
+                        }
+                    }`);
+                    slider.adoptedStyleSheets = [style];
+
+                    this.#input = document.createElement("input");
+                    this.#input.setAttribute("type", "range");
+                    this.#input.setAttribute("step", "0.01");
+                    this.#input.setAttribute("min", "0");
+                    this.#input.setAttribute("max", "1");
+                    this.#input.setAttribute("value", "1");
+                    this.#input.setAttribute("tabindex", "0");
+                    slider.appendChild(this.#input);
+
+                    this.#input.addEventListener("input", () => {
+                        this.dispatchEvent(new CustomEvent("input"));
+                    });
+                }
+
+                get value() {
+                    return this.#input.value;
+                }
+
+                set value(value) {
+                    this.#input.value = value;
+                }
+            });
 
             customElements.define("chord-picker", class extends HTMLElement {
                 #rootPicker;
@@ -1228,9 +1332,9 @@
                 const chordGraph = document.querySelector("chord-graph");
                 const chordPicker = document.querySelector("chord-picker");
                 const chordSheet = document.querySelector("chord-sheet");
-                const volumeSlider = document.querySelector("#volume input");
-                volumeSlider.value = chordPlayer.volume * 100;
-                volumeSlider.addEventListener("input", () => chordPlayer.volume = volumeSlider.value / 100);
+                const volumeSlider = document.querySelector("volume-slider");
+                volumeSlider.value = chordPlayer.volume;
+                volumeSlider.addEventListener("input", () => chordPlayer.volume = volumeSlider.value);
 
                 var editingIndex = undefined;
 
@@ -1351,13 +1455,41 @@
         </script>
 
         <style>
+            /* Layout */
+
             html {
                 font-family: system-ui;
-                --theme-color: yellow;
-                --edit-color: blue;
                 --border-radius: 0.4em;
                 --chord-width: 11em;
                 --border-width: 0.15rem;
+            }
+
+            html,
+            chord-picker,
+            chord-graph {
+                --border: var(--border-width) solid var(--border-color);
+            }
+
+            body {
+                display: flex;
+                font-size: 1.2rem;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .buttons, chord-picker {
+                margin: 1em 0;
+            }
+
+            chord-sheet {
+                width: 100%;
+            }
+
+            /* Colors */
+
+            html {
+                --theme-color: yellow;
+                --edit-color: blue;
             }
 
             html,
@@ -1371,26 +1503,13 @@
                 --button-disabled-text-color: oklch(from var(--theme-color) 80% 10% h);
                 --button-disabled-border-color: oklch(from var(--theme-color) 90% 10% h);
                 --button-disabled-background-color: oklch(from var(--theme-color) 95% 2% h);
-                --border: var(--border-width) solid var(--border-color);
-            }
-
-            body {
-                display: flex;
-                font-size: 1.2rem;
-                flex-direction: column;
-                align-items: center;
             }
 
             h1 {
                 color: oklch(from var(--theme-color) 65% 20% h);
             }
 
-            .buttons, chord-picker {
-                margin: 1em 0;
-            }
-
             chord-sheet {
-                width: 100%;
                 --playing-color: oklch(from var(--theme-color) 60% 30% h);
                 --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
                 --selected-color: oklch(from var(--edit-color) 60% 30% h);
@@ -1401,6 +1520,8 @@
             chord-graph[editing] {
                 --theme-color: var(--edit-color);
             }
+
+            /* Buttons */
 
             button,
             chord-picker::part(control) {
@@ -1451,81 +1572,11 @@
                 border-color: var(--button-disabled-border-color);
                 background-color: var(--button-disabled-background-color);
             }
-
-            #volume {
-                width: 15rem;
-                height: 1.2rem;
-                border-radius: 0.6rem;
-                overflow: hidden;
-
-                &::before {
-                    content: "";
-                    z-index: -1;
-                    box-sizing: border-box;
-                    display: block;
-                    border-style: solid;
-                    border-width: 0.6rem 15rem 0.6rem 0;
-                    border-color: transparent var(--border-color) transparent transparent;
-                    width: 15rem;
-                    height: 1.2rem;
-                    margin-bottom: -1.2rem;
-                }
-
-                input[type="range"] {
-                    margin: 0;
-                    -webkit-appearance: none;
-                    appearance: none;
-                    background-color: transparent;
-                    cursor: pointer;
-                    width: 100%;
-                    height: 100%;
-
-                    &::-webkit-slider-thumb {
-                        -webkit-appearance: none;
-                        appearance: none;
-                        box-sizing: border-box;
-                        background-color: var(--button-background-color);
-                        border: var(--border);
-                        border-radius: 50%;
-                        height: 1.2rem;
-                        width: 1.2rem;
-                    }
-
-                    &::-moz-range-thumb {
-                        box-sizing: border-box;
-                        background-color: var(--button-background-color);
-                        border: var(--border);
-                        border-radius: 50%;
-                        height: 1.2rem;
-                        width: 1.2rem;
-                    }
-                }
-
-                /* Safari gets confused when this style is nested. */
-                input[type="range"]:focus-visible {
-                    outline: none;
-
-                    &::-webkit-slider-thumb {
-                        outline-width: var(--border-width);
-                        outline-style: solid;
-                        outline-color: -webkit-focus-ring-color;
-                        outline-offset: calc(-1 * var(--border-width));
-                        box-shadow: white 0 0 0 calc(var(--border-width) / 2);
-                    }
-
-                    &::-moz-range-thumb {
-                        outline-style: auto;
-                        outline-offset: calc(-1 * var(--border-width));
-                    }
-                }
-            }
         </style>
     </head>
     <body>
         <h1>Chord Dancer</h1>
-        <div id="volume" >
-            <input type="range" min="0" max="100" value="100" tabindex="0">
-        </div>
+        <volume-slider></volume-slider>
         <chord-picker></chord-picker>
         <chord-graph></chord-graph>
         <div class="buttons">
@@ -1540,8 +1591,6 @@
         <p>
             To do:
             <ol>
-                <li>Turn volume slider into a component</li>
-                <li>No-op edits shouldn't add to the undo stack</li>
                 <li>Save/load</li>
                 <li>MusicXML export</li>
                 <li>MIDI export</li>
