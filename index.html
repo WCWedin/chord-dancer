@@ -21,16 +21,16 @@
                 #selections = [];
                 #currentIndex = -1;
 
-                get #currentChords() {
+                get currentChords() {
                     return this.#states[this.#currentIndex] ?? [];
                 }
 
                 get #latestIndex() {
-                    return this.#currentChords.length - 1;
+                    return this.currentChords.length - 1;
                 }
                 
                 get latestChord() {
-                    return this.#currentChords[this.#latestIndex];
+                    return this.currentChords[this.#latestIndex];
                 }
 
                 get selectedIndex() {
@@ -54,20 +54,20 @@
 
                 push(chord) {
                     this.#pushState([
-                        ...this.#currentChords,
+                        ...this.currentChords,
                         chord
                     ]);
                 }
 
                 edit(index, chord) {
-                    if (this.#currentChords[index].every((v, i) => v === chord[i])) {
+                    if (this.currentChords[index].every((v, i) => v === chord[i])) {
                         return;
                     }
 
                     this.#pushState([
-                        ...this.#currentChords.slice(0, index),
+                        ...this.currentChords.slice(0, index),
                         chord,
-                        ...this.#currentChords.slice(index + 1)
+                        ...this.currentChords.slice(index + 1)
                     ], index);
                 }
 
@@ -77,19 +77,19 @@
 
                 #setOctave(index, octave) {
                     this.edit(index, [
-                        ...this.#currentChords[index].slice(0, -1),
+                        ...this.currentChords[index].slice(0, -1),
                         octave
                     ]);
                 }
 
                 increaseOctave(index) {
                     index = index ?? this.#latestIndex;
-                    this.#setOctave(index, this.#currentChords[index][3] + 1);
+                    this.#setOctave(index, this.currentChords[index][3] + 1);
                 }
 
                 decreaseOctave(index) {
                     index = index ?? this.#latestIndex;
-                    this.#setOctave(index, this.#currentChords[index][3] - 1);
+                    this.#setOctave(index, this.currentChords[index][3] - 1);
                 }
 
                 get canUndo() {
@@ -115,15 +115,15 @@
                 }
 
                 map(func) {
-                    return this.#currentChords.map(func);
+                    return this.currentChords.map(func);
                 }
 
                 get length() {
-                    return this.#currentChords.length;
+                    return this.currentChords.length;
                 }
                 
                 getChord(index) {
-                    return this.#currentChords[index];
+                    return this.currentChords[index];
                 }
             }
 
@@ -674,6 +674,10 @@
                     }
                 }
 
+                takeFocus() {
+                    this.#rootPicker.focus();
+                }
+
                 attributeChangedCallback(name, oldValue, newValue) {
                     if (oldValue === newValue) return;
 
@@ -906,10 +910,13 @@
                 }
             });
 
-            customElements.define("stop-editing-panel", class extends HTMLElement {
+            customElements.define("editing-panel", class extends HTMLElement {
                 #disabled;
                 #panel;
-                #button;
+                #stopButton;
+                #editButton;
+                #insertButton;
+                #deleteButton;
 
                 static observedAttributes = ["disabled"];
 
@@ -917,19 +924,19 @@
                     super();
 
                     this.#panel = this.attachShadow({ mode: "closed" });
-                    this.#button = document.createElement("button");
-                    this.#button.setAttribute("tabindex", "0");
-                    this.#button.setAttribute("part", "button");
-                    this.#button.innerText = "Stop Editing";
-                    this.#button.addEventListener("click", () => {
+                    this.#stopButton = document.createElement("button");
+                    this.#stopButton.setAttribute("tabindex", "0");
+                    this.#stopButton.setAttribute("part", "button");
+                    this.#stopButton.innerText = "Stop Editing";
+                    this.#stopButton.addEventListener("click", () => {
                         this.dispatchEvent(new CustomEvent(
-                            "stopEditing",
+                            "stop",
                             {
                                 bubbles: true
                             }
                         ));
                     });
-                    this.#panel.appendChild(this.#button);
+                    this.#panel.appendChild(this.#stopButton);
                 }
 
                 attributeChangedCallback(name, oldValue, newValue) {
@@ -943,9 +950,9 @@
 
                 updateButton() {
                     if (this.#disabled) {
-                        this.#panel.removeChild(this.#button);
+                        this.#panel.removeChild(this.#stopButton);
                     } else {
-                        this.#panel.appendChild(this.#button);
+                        this.#panel.appendChild(this.#stopButton);
                     }
                 }
             });
@@ -966,7 +973,7 @@
                 #raiseFifthCollection;
                 #lowerFifthCollection;
 
-                #stopEditingPanel;
+                #editingPanel;
                 #octaveControl;
 
                 static observedAttributes = ["root", "third", "fifth", "octave", "active-chord", "editing"];
@@ -1007,7 +1014,7 @@
                         padding: 0 0.25em;
                     }`);
                     style.insertRule(`
-                    stop-editing-panel::part(button),
+                    editing-panel::part(button),
                     chord-collection::part(button),
                     octave-control::part(button) {
                         margin: 0.25em 0;
@@ -1042,7 +1049,7 @@
                             bubbles: true
                         }
                     )));
-                    graph.addEventListener("stopEditing", () => this.dispatchEvent(new CustomEvent(
+                    graph.addEventListener("stop", () => this.dispatchEvent(new CustomEvent(
                         "stopEditing",
                         {
                             bubbles: true
@@ -1051,20 +1058,20 @@
 
                     const table = document.createElement("div");
 
-                    const stopEditingPanelExportedParts = "button, button:panel-button";
+                    const editingPanelExportedParts = "button, button:panel-button";
                     const octaveControlExportedParts = "button, button:panel-button";
                     const chordCollectionExportedParts = "button";
 
                     const topRow = document.createElement("div");
-                    this.#stopEditingPanel = document.createElement("stop-editing-panel");
-                    this.#stopEditingPanel.setAttribute("exportparts", stopEditingPanelExportedParts);
-                    this.#stopEditingPanel.setAttribute("disabled", "");
+                    this.#editingPanel = document.createElement("editing-panel");
+                    this.#editingPanel.setAttribute("exportparts", editingPanelExportedParts);
+                    this.#editingPanel.setAttribute("disabled", "");
                     this.#raiseRootCollection = document.createElement("chord-collection");
                     this.#raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     this.#raiseThirdCollection = document.createElement("chord-collection");
                     this.#raiseThirdCollection.setAttribute("exportparts", chordCollectionExportedParts);
                     topRow.append(
-                        this.#stopEditingPanel,
+                        this.#editingPanel,
                         this.#raiseRootCollection,
                         this.#raiseThirdCollection
                     );
@@ -1125,7 +1132,7 @@
                     }
                     if (name === "editing") {
                         this.#editing = newValue !== null;
-                        this.updateStopEditingPanel();
+                        this.updateEditingPanel();
                     }
                 }
 
@@ -1155,11 +1162,11 @@
                     this.#octaveControl.setAttribute("octave", this.#octave);
                 }
 
-                updateStopEditingPanel() {
+                updateEditingPanel() {
                     if (this.#editing) {
-                        this.#stopEditingPanel.removeAttribute("disabled");
+                        this.#editingPanel.removeAttribute("disabled");
                     } else {
-                        this.#stopEditingPanel.setAttribute("disabled", "");
+                        this.#editingPanel.setAttribute("disabled", "");
                     }
                 }
             });
@@ -1219,6 +1226,7 @@
                 #chords = [];
 
                 set chords(newChords) {
+                    if (this.#chords === newChords) return;
                     this.#chords = newChords;
                     this.#render();
                 }
@@ -1245,9 +1253,19 @@
                     this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.add("selected");
                 }
 
+                #selectChord(index) {
+                    this.selectChord(index);
+                    this.dispatchEvent(new CustomEvent("chordSelected", { detail: { index } }));
+                }
+
                 deselectChord(index) {
                     this.#selectedChords.delete(index);
                     this.#container.querySelectorAll(".vf-stavenote")?.[index]?.classList.remove("selected");
+                }
+
+                #deselectChord(index) {
+                    this.deselectChord(index);
+                    this.dispatchEvent(new CustomEvent("chordDeselected", { detail: { index } }));
                 }
 
                 clearSelection() {
@@ -1257,11 +1275,9 @@
 
                 chordClicked(index, event) {
                     if (this.#selectedChords.has(index)) {
-                        this.deselectChord(index);
-                        this.dispatchEvent(new CustomEvent("chordDeselected", { detail: { index } }));
+                        this.#deselectChord(index);
                     } else {
-                        this.selectChord(index);
-                        this.dispatchEvent(new CustomEvent("chordSelected", { detail: { index } }));
+                        this.#selectChord(index);
                     }
                     event.stopPropagation();
                 }
@@ -1287,15 +1303,32 @@
                         this.#renderStave(staveNotes, staveChordNames, context, top);
                     }
 
-                    const chords = this.#container.querySelectorAll(".vf-stavenote");
+                    const chordElements = this.#container.querySelectorAll(".vf-stavenote");
 
-                    for (const index of chords.keys()) {
+                    for (const index of chordElements.keys()) {
                         if (this.#selectedChords.has(index)) {
-                            chords[index].classList.add("selected");
+                            chordElements[index].classList.add("selected");
                         }
-                        chords[index].setAttribute("pointer-events", "bounding-box");
-                        chords[index].addEventListener("click", (event) => this.chordClicked(index, event));
-                        chords[index].nextSibling.addEventListener("click", (event) => this.chordClicked(index, event));
+                        const chordElement = chordElements[index];
+                        chordElement.setAttribute("pointer-events", "bounding-box");
+                        chordElement.addEventListener("click", (event) => this.chordClicked(index, event));
+                        const chordLabel = chordElement.nextSibling;
+                        chordLabel.addEventListener("click", (event) => this.chordClicked(index, event));
+                        chordLabel.addEventListener("focus", (event) => {
+                            if (
+                                chordLabel.matches(":focus-visible")
+                                && !this.#selectedChords.has(index)
+                            ) {
+                                this.#selectChord(index);
+                            }
+                        });
+                        chordLabel.addEventListener("keydown", (event) => {
+                            if (event.key === "Enter") {
+                                this.dispatchEvent(new CustomEvent("chordPicked", { detail: { index } }));
+                                event.preventDefault();
+                            }
+                        });
+                        chordLabel.setAttribute("tabindex", "0");
                     }
                 }
 
@@ -1368,6 +1401,10 @@
                 chordSheet.addEventListener("chordDeselected", () => handleDeselection());
                 chordSheet.addEventListener("selectionCleared", () => handleDeselection());
 
+                chordSheet.addEventListener("chordPicked", (event) => {
+                    chordPicker.takeFocus();
+                });
+
                 document.addEventListener("chordPushed", (event) => {
                     if (editingIndex === undefined) chordHistory.push(event.detail);
                     else chordHistory.edit(editingIndex, event.detail);
@@ -1433,7 +1470,6 @@
                         setChord(...chord);
                         chordGraph.setAttribute("active-chord", "");
                         chordPlayer.playChord(...chord);
-                        chordSheet.selectChord(editingIndex);
                         document.getElementById("clear").disabled = false;
                         document.getElementById("play").disabled = false;
                     } else {
@@ -1445,8 +1481,9 @@
 
                     document.getElementById("undo").disabled = !chordHistory.canUndo;
                     document.getElementById("redo").disabled = !chordHistory.canRedo;
-                    
-                    chordSheet.chords = chordHistory;
+
+                    chordSheet.chords = chordHistory.currentChords;
+                    if (editingIndex !== undefined) chordSheet.selectChord(editingIndex);
                 }
 
                 updateUI();
@@ -1488,7 +1525,9 @@
 
             html {
                 --theme-color: yellow;
-                --edit-color: blue;
+                --edit-color: aqua;
+                --insert-color: fuchsia;
+                --delete-color: red;
             }
 
             html,
@@ -1513,11 +1552,21 @@
                 --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
                 --selected-color: oklch(from var(--edit-color) 60% 30% h);
                 --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
+
+                &[inserting] {
+                    --edit-color: var(--insert-color);
+                }
             }
 
-            chord-picker[editing],
-            chord-graph[editing] {
-                --theme-color: var(--edit-color);
+            chord-picker,
+            chord-graph {
+                &[editing] {
+                    --theme-color: var(--edit-color);
+                }
+
+                &[inserting] {
+                    --theme-color: var(--insert-color);
+                }
             }
 
             /* Buttons */
@@ -1587,16 +1636,21 @@
             <button id="stop" tabindex="0">Stop</button>
             <button id="clear" tabindex="0">Clear</button>
         </div>
+        <chord-sheet></chord-sheet>
         <p>
             To do:
             <ol>
                 <li>Save/load</li>
                 <li>Insert/delete</li>
+                <li>Improve keyboard navigation</li>
+                <li>Have chord picker update chord graph and add "Reset" button</li>
+                <li>Add current octave display to octave control panel</li>
+                <li>Have octave buttons update chord picker and current octave display instead of last chord</li>
                 <li>MusicXML export</li>
                 <li>MIDI export</li>
                 <li>Fix audio context muting after idle time in Safari</li>
+                <li>Highlight (in red?) any note without a hemitonic pitch-class neighbor in previous chord</li>
             </ol>
         </p>
-        <chord-sheet></chord-sheet>
     </body>
 </html>
