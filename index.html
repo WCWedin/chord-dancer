@@ -1208,6 +1208,7 @@
                         cursor: pointer;
                     }`);
                     sheet.adoptedStyleSheets = [style];
+
                     this.#container = document.createElement("div");
                     this.#container.addEventListener("click", () => {
                         this.clearSelection();
@@ -1358,285 +1359,361 @@
                 }
             });
 
-            document.addEventListener("DOMContentLoaded", () => {
-                const chordHistory = new ChordHistory();
-                const chordPlayer = new ChordPlayer();
-                const chordGraph = document.querySelector("chord-graph");
-                const chordPicker = document.querySelector("chord-picker");
-                const chordSheet = document.querySelector("chord-sheet");
-                const volumeSlider = document.querySelector("volume-slider");
-                volumeSlider.value = chordPlayer.volume;
-                volumeSlider.addEventListener("input", () => chordPlayer.volume = volumeSlider.value);
+            customElements.define("chord-dancer", class extends HTMLElement {
+                #chordHistory;
+                #chordPlayer;
+                #volumeSlider;
+                #chordPicker;
+                #chordGraph;
+                #chordSheet;
 
-                var editingIndex = undefined;
+                #undoButton;
+                #redoButton;
+                #clearButton;
+                #playButton;
+                #stopButton;
 
-                chordHistory.addEventListener("stateUpdated", updateUI);
+                #editingIndex = undefined
 
-                chordPlayer.addEventListener("chordStarted", (event) => {
-                    chordSheet.playChord(event.detail.index);
-                });
-                chordPlayer.addEventListener("chordEnded", (event) => {
-                    chordSheet.stopChord(event.detail.index);
-                });
-                chordPlayer.addEventListener("playbackStarted", () => {
-                    document.getElementById("stop").disabled = false;
-                });
-                chordPlayer.addEventListener("playbackEnded", () => {
-                    document.getElementById("stop").disabled = true;
-                    chordSheet.stopPlayback();
-                });
+                constructor() {
+                    super();
 
-                chordSheet.addEventListener("chordSelected", (event) => {
-                    editingIndex = event.detail.index;
-                    updateUI();
-                });
+                    const dancer = this.attachShadow({ mode: "closed" });
+                    const body = dancer.appendChild(document.createElement("div"));
+                    body.id = "body";
 
-                function handleDeselection() {
-                    if (editingIndex !== undefined) {
-                        editingIndex = undefined;
-                        updateUI();
+                    { // Add styles.
+                        const style = new CSSStyleSheet();
+
+                        style.insertRule(`
+                        #body,
+                        chord-picker,
+                        chord-graph {
+                            --border: var(--border-width) solid var(--border-color);
+                        }`);
+
+                        { // Add layout rules.
+                            style.insertRule(`
+                            #body {
+                                display: flex;
+                                font-size: 1.2rem;
+                                flex-direction: column;
+                                align-items: center;
+                            }`);
+
+                            style.insertRule(`
+                            .buttons, chord-picker {
+                                margin: 1em 0;
+                            }`);
+
+                            style.insertRule(`
+                            chord-sheet {
+                                width: 100%;
+                            }`);
+                        }
+
+                        { // Add color rules.
+                            style.insertRule(`
+                            #body,
+                            chord-picker,
+                            chord-graph {
+                                --button-text-color: oklch(from var(--theme-color) 30% 30% h);
+                                --button-background-color: oklch(from var(--theme-color) 98% 2% h);
+                                --button-active-background-color: oklch(from var(--theme-color) 94% 10% h);
+                                --button-hover-background-color: oklch(from var(--theme-color) 90% 10% h);
+                                --border-color: oklch(from var(--theme-color) 80% 20% h);
+                                --button-disabled-text-color: oklch(from var(--theme-color) 80% 10% h);
+                                --button-disabled-border-color: oklch(from var(--theme-color) 90% 10% h);
+                                --button-disabled-background-color: oklch(from var(--theme-color) 95% 2% h);
+                            }`);
+
+                            style.insertRule(`
+                            chord-sheet {
+                                --playing-color: oklch(from var(--theme-color) 60% 30% h);
+                                --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
+                                --selected-color: oklch(from var(--edit-color) 60% 30% h);
+                                --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
+
+                                &[inserting] {
+                                    --edit-color: var(--insert-color);
+                                }
+                            }`);
+
+                            style.insertRule(`
+                            chord-picker,
+                            chord-graph {
+                                &[editing] {
+                                    --theme-color: var(--edit-color);
+                                }
+
+                                &[inserting] {
+                                    --theme-color: var(--insert-color);
+                                }
+                            }`);
+                        }
+            
+                        { // Add button rules.
+                            style.insertRule(`
+                            button,
+                            chord-picker::part(control) {
+                                margin: 0 0.4em;
+                            }`);
+
+                            style.insertRule(`
+                            button,
+                            chord-picker::part(control),
+                            chord-graph::part(panel-button) {
+                                border: var(--border);
+                                background-color: var(--button-background-color);
+                            }`);
+
+                            style.insertRule(`
+                            button,
+                            chord-picker::part(control),
+                            chord-graph::part(button) {
+                                color: var(--button-text-color);
+                                border-radius: var(--border-radius);
+                                padding: 0.25em 0.4em;
+                                font-size: 1em;
+                            }`);
+
+
+                            // Nesting/is on pseudo-elements isn't supported: https://github.com/w3c/csswg-drafts/issues/9702
+                            style.insertRule(`
+                            button:focus-visible:not(:hover, :active, :disabled),
+                            chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
+                            chord-graph::part(button):focus-visible:not(:hover, :active, :disabled)
+                            {
+                                background-color: var(--button-active-background-color);
+                            }`);
+
+                            style.insertRule(`
+                            button:hover:not(:active, :disabled),
+                            chord-picker::part(control):hover:not(:active, :disabled),
+                            chord-graph::part(button):hover:not(:active, :disabled)
+                            {
+                                background-color: var(--button-hover-background-color);
+                            }`);
+
+                            style.insertRule(`
+                            button:active:not(:disabled),
+                            chord-picker::part(button):active:not(:disabled),
+                            chord-graph::part(button):active:not(:disabled)
+                            {
+                                background-color: var(--button-active-background-color);
+                            }`);
+
+                            style.insertRule(`
+                            button:disabled,
+                            chord-graph::part(panel-button):disabled {
+                                color: var(--button-disabled-text-color);
+                                border-color: var(--button-disabled-border-color);
+                                background-color: var(--button-disabled-background-color);
+                            }`);
+                        }
+                        dancer.adoptedStyleSheets = [style];
                     }
-                }
+
+                    { // Add chord history.
+                        this.#chordHistory = new ChordHistory();
+                        this.#chordHistory.addEventListener("stateUpdated", () => {
+                            this.#updateUI();
+                        });
+                    }
+                    
+                    { // Add chord player.
+                        this.#chordPlayer = new ChordPlayer();
+
+                        this.#chordPlayer.addEventListener("chordStarted", (event) => {
+                            this.#chordSheet.playChord(event.detail.index);
+                        });
+                        this.#chordPlayer.addEventListener("chordEnded", (event) => {
+                            this.#chordSheet.stopChord(event.detail.index);
+                        });
+                        this.#chordPlayer.addEventListener("playbackStarted", () => {
+                            document.getElementById("stop").disabled = false;
+                        });
+                        this.#chordPlayer.addEventListener("playbackEnded", () => {
+                            document.getElementById("stop").disabled = true;
+                            this.#chordSheet.stopPlayback();
+                        });
+                    }
+
+                    { // Add volume slider.
+                        this.#volumeSlider = body.appendChild(document.createElement("volume-slider"));
+                        this.#volumeSlider.value = this.#chordPlayer.volume;
+                        this.#volumeSlider.addEventListener("input", () => this.#chordPlayer.volume = this.#volumeSlider.value);
+                    }
+
+                    { // Add chord picker.
+                        this.#chordPicker = body.appendChild(document.createElement("chord-picker"));
+                        this.#chordPicker.addEventListener("chordPushed", (event) => {
+                            this.#pushChord(event);
+                        });
+                    }
+
+                    { // Add chord graph.
+                        this.#chordGraph = body.appendChild(document.createElement("chord-graph"));
+                        this.#chordGraph.addEventListener("stopEditing", () => {
+                            this.#handleDeselection();
+                        });
+                        this.#chordGraph.addEventListener("chordPushed", (event) => {
+                            this.#pushChord(event);
+                        });
+                        this.#chordGraph.addEventListener("octaveIncreased", () => {
+                            if (this.#editingIndex === undefined) this.#chordHistory.increaseOctave();
+                            else this.#chordHistory.increaseOctave(this.#editingIndex);
+                        });
+                        this.#chordGraph.addEventListener("octaveDecreased", () => {
+                            if (this.#editingIndex === undefined) this.#chordHistory.decreaseOctave();
+                            else this.#chordHistory.decreaseOctave(this.#editingIndex);
+                        });
+                    }
+
+                    { // Add edit buttons.
+                        const editButtons = body.appendChild(document.createElement("div"));
+                        editButtons.classList.add("buttons");
+                        
+                        this.#undoButton = editButtons.appendChild(document.createElement("button"));
+                        this.#undoButton.tabIndex = 0;
+                        this.#undoButton.append(document.createTextNode("Undo"));
+                        this.#undoButton.addEventListener("click", () => {
+                            this.#editingIndex = -1;
+                            this.#chordHistory.undo();
+                        });
+
+                        this.#redoButton = editButtons.appendChild(document.createElement("button"));
+                        this.#redoButton.tabIndex = 0;
+                        this.#redoButton.append(document.createTextNode("Redo"));
+                        this.#redoButton.addEventListener("click", () => {
+                            this.#editingIndex = -1;
+                            this.#chordHistory.redo();
+                        });
+
+                        this.#clearButton = editButtons.appendChild(document.createElement("button"));
+                        this.#clearButton.tabIndex = 0;
+                        this.#clearButton.append(document.createTextNode("Clear"));
+                        this.#clearButton.addEventListener("click", () => {
+                            this.#editingIndex = undefined;
+                            this.#chordHistory.clear();
+                        });
+                    }
+
+                    { // Add player buttons.
+                        const playerButtons = body.appendChild(document.createElement("div"));
+                        playerButtons.classList.add("buttons");
+
+                        this.#playButton = playerButtons.appendChild(document.createElement("button"));
+                        this.#playButton.tabIndex = 0;
+                        this.#playButton.append(document.createTextNode("Play"));
+                        this.#playButton.addEventListener("click", () => this.#chordPlayer.playChords(this.#chordHistory));
+                        
+                        this.#stopButton = playerButtons.appendChild(document.createElement("button"));
+                        this.#stopButton.tabIndex = 0;
+                        this.#stopButton.append(document.createTextNode("Stop"));
+                        this.#stopButton.addEventListener("click", () => this.#chordPlayer.stopPlayback());
+                    }
+
+                    { // Add chord sheet.
+                        this.#chordSheet = body.appendChild(document.createElement("chord-sheet"));
+                        this.#chordSheet.addEventListener("chordSelected", (event) => {
+                            this.#editingIndex = event.detail.index;
+                            this.#updateUI();
+                        });
+                        this.#chordSheet.addEventListener("chordDeselected", () => this.#handleDeselection());
+                        this.#chordSheet.addEventListener("selectionCleared", () => this.#handleDeselection());
+                        this.#chordSheet.addEventListener("chordPicked", (event) => {
+                            this.#chordPicker.takeFocus();
+                        });
+                    }
                 
-                chordSheet.addEventListener("chordDeselected", () => handleDeselection());
-                chordSheet.addEventListener("selectionCleared", () => handleDeselection());
-
-                chordSheet.addEventListener("chordPicked", (event) => {
-                    chordPicker.takeFocus();
-                });
-
-                document.addEventListener("chordPushed", (event) => {
-                    if (editingIndex === undefined) chordHistory.push(event.detail);
-                    else chordHistory.edit(editingIndex, event.detail);
-                });
-                document.addEventListener("octaveIncreased", () => {
-                    if (editingIndex === undefined) chordHistory.increaseOctave();
-                    else chordHistory.increaseOctave(editingIndex);
-                });
-                document.addEventListener("octaveDecreased", () => {
-                    if (editingIndex === undefined) chordHistory.decreaseOctave();
-                    else chordHistory.decreaseOctave(editingIndex);
-                });
-                document.addEventListener("stopEditing", () => {
-                    editingIndex = undefined;
-                    updateUI();
-                });
-
-                document.getElementById("clear").addEventListener("click", () => {
-                    editingIndex = undefined;
-                    chordHistory.clear();
-                });
-                document.getElementById("undo").addEventListener("click", () => {
-                    editingIndex = -1;
-                    chordHistory.undo();
-                });
-                document.getElementById("redo").addEventListener("click", () => {
-                    editingIndex = -1;
-                    chordHistory.redo();
-                });
-
-                document.getElementById("play").addEventListener("click", () => chordPlayer.playChords(chordHistory));
-                document.getElementById("stop").addEventListener("click", () => chordPlayer.stopPlayback());
-
-                function updateUI() {
-                    function setChord(root, third, fifth, octave) {
-                        chordGraph.setAttribute("root", root);
-                        chordGraph.setAttribute("third", third);
-                        chordGraph.setAttribute("fifth", fifth);
-                        chordGraph.setAttribute("octave", octave);
-
-                        chordPicker.setAttribute("root", root);
-                        chordPicker.setAttribute("third", third);
-                        chordPicker.setAttribute("fifth", fifth);
-                        chordPicker.setAttribute("octave", octave);
-                    }
-
-                    chordPlayer.stopPlayback();
-                    document.getElementById("stop").disabled = true;
-
-                    if (editingIndex === -1) editingIndex = chordHistory.selectedIndex;
-                    if (editingIndex !== undefined) {
-                        chordPicker.setAttribute("editing", "");
-                        chordGraph.setAttribute("editing", "");
-                    } else {
-                        chordPicker.removeAttribute("editing");
-                        chordGraph.removeAttribute("editing");
-                    }
-
-                    if (chordHistory.latestChord) {
-                        const chord = editingIndex !== undefined
-                            ? chordHistory.getChord(editingIndex)
-                            : chordHistory.latestChord;
-                        setChord(...chord);
-                        chordGraph.setAttribute("active-chord", "");
-                        chordPlayer.playChord(...chord);
-                        document.getElementById("clear").disabled = false;
-                        document.getElementById("play").disabled = false;
-                    } else {
-                        setChord(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0);
-                        chordGraph.removeAttribute("active-chord");
-                        document.getElementById("clear").disabled = true;
-                        document.getElementById("play").disabled = true;
-                    }
-
-                    document.getElementById("undo").disabled = !chordHistory.canUndo;
-                    document.getElementById("redo").disabled = !chordHistory.canRedo;
-
-                    chordSheet.chords = chordHistory.currentChords;
-                    if (editingIndex !== undefined) chordSheet.selectChord(editingIndex);
+                    this.#updateUI();
                 }
 
-                updateUI();
+                #pushChord(event) {
+                    if (this.#editingIndex === undefined) this.#chordHistory.push(event.detail);
+                    else this.#chordHistory.edit(this.#editingIndex, event.detail);
+                }
+
+                #handleDeselection() {
+                    if (this.#editingIndex !== undefined) {
+                        this.#editingIndex = undefined;
+                        this.#updateUI();
+                    }
+                }
+
+                #setChord(root, third, fifth, octave) {
+                    this.#chordGraph.setAttribute("root", root);
+                    this.#chordGraph.setAttribute("third", third);
+                    this.#chordGraph.setAttribute("fifth", fifth);
+                    this.#chordGraph.setAttribute("octave", octave);
+
+                    this.#chordPicker.setAttribute("root", root);
+                    this.#chordPicker.setAttribute("third", third);
+                    this.#chordPicker.setAttribute("fifth", fifth);
+                    this.#chordPicker.setAttribute("octave", octave);
+                }
+
+                #updateUI() {
+                    this.#chordPlayer.stopPlayback();
+                    this.#stopButton.disabled = true;
+
+                    if (this.#editingIndex === -1) this.#editingIndex = this.#chordHistory.selectedIndex;
+                    if (this.#editingIndex !== undefined) {
+                        this.#chordPicker.setAttribute("editing", "");
+                        this.#chordGraph.setAttribute("editing", "");
+                    } else {
+                        this.#chordPicker.removeAttribute("editing");
+                        this.#chordGraph.removeAttribute("editing");
+                    }
+
+                    if (this.#chordHistory.latestChord) {
+                        const chord = this.#editingIndex !== undefined
+                            ? this.#chordHistory.getChord(this.#editingIndex)
+                            : this.#chordHistory.latestChord;
+                        this.#setChord(...chord);
+                        this.#chordGraph.setAttribute("active-chord", "");
+                        this.#chordPlayer.playChord(...chord);
+                        this.#clearButton.disabled = false;
+                        this.#playButton.disabled = false;
+                    } else {
+                        this.#setChord(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0);
+                        this.#chordGraph.removeAttribute("active-chord");
+                        this.#clearButton.disabled = true;
+                        this.#playButton.disabled = true;
+                    }
+
+                    this.#undoButton.disabled = !this.#chordHistory.canUndo;
+                    this.#redoButton.disabled = !this.#chordHistory.canRedo;
+
+                    this.#chordSheet.chords = this.#chordHistory.currentChords;
+                    if (this.#editingIndex !== undefined) this.#chordSheet.selectChord(this.#editingIndex);
+                    else this.#chordSheet.clearSelection();
+                }
             });
         </script>
 
         <style>
-            /* Layout */
-
             html {
                 font-family: system-ui;
                 --border-radius: 0.4em;
                 --chord-width: 11em;
                 --border-width: 0.15rem;
-            }
-
-            html,
-            chord-picker,
-            chord-graph {
-                --border: var(--border-width) solid var(--border-color);
-            }
-
-            body {
-                display: flex;
-                font-size: 1.2rem;
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .buttons, chord-picker {
-                margin: 1em 0;
-            }
-
-            chord-sheet {
-                width: 100%;
-            }
-
-            /* Colors */
-
-            html {
                 --theme-color: yellow;
                 --edit-color: aqua;
                 --insert-color: fuchsia;
                 --delete-color: red;
             }
 
-            html,
-            chord-picker,
-            chord-graph {
-                --button-text-color: oklch(from var(--theme-color) 30% 30% h);
-                --button-background-color: oklch(from var(--theme-color) 98% 2% h);
-                --button-active-background-color: oklch(from var(--theme-color) 94% 10% h);
-                --button-hover-background-color: oklch(from var(--theme-color) 90% 10% h);
-                --border-color: oklch(from var(--theme-color) 80% 20% h);
-                --button-disabled-text-color: oklch(from var(--theme-color) 80% 10% h);
-                --button-disabled-border-color: oklch(from var(--theme-color) 90% 10% h);
-                --button-disabled-background-color: oklch(from var(--theme-color) 95% 2% h);
-            }
-
             h1 {
                 color: oklch(from var(--theme-color) 65% 20% h);
-            }
-
-            chord-sheet {
-                --playing-color: oklch(from var(--theme-color) 60% 30% h);
-                --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
-                --selected-color: oklch(from var(--edit-color) 60% 30% h);
-                --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
-
-                &[inserting] {
-                    --edit-color: var(--insert-color);
-                }
-            }
-
-            chord-picker,
-            chord-graph {
-                &[editing] {
-                    --theme-color: var(--edit-color);
-                }
-
-                &[inserting] {
-                    --theme-color: var(--insert-color);
-                }
-            }
-
-            /* Buttons */
-
-            button,
-            chord-picker::part(control) {
-                margin: 0 0.4em;
-            }
-
-            button,
-            chord-picker::part(control),
-            chord-graph::part(panel-button) {
-                border: var(--border);
-                background-color: var(--button-background-color);
-            }
-
-            button,
-            chord-picker::part(control),
-            chord-graph::part(button) {
-                color: var(--button-text-color);
-                border-radius: var(--border-radius);
-                padding: 0.25em 0.4em;
-                font-size: 1em;
-            }
-
-            /* Nesting/is on pseudo-elements isn't supported: https://github.com/w3c/csswg-drafts/issues/9702 */
-            button:focus-visible:not(:hover, :active, :disabled),
-            chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
-            chord-graph::part(button):focus-visible:not(:hover, :active, :disabled)
-            {
-                background-color: var(--button-active-background-color);
-            }
-
-            button:hover:not(:active, :disabled),
-            chord-picker::part(control):hover:not(:active, :disabled),
-            chord-graph::part(button):hover:not(:active, :disabled)
-            {
-                background-color: var(--button-hover-background-color);
-            }
-
-            button:active:not(:disabled),
-            chord-picker::part(button):active:not(:disabled),
-            chord-graph::part(button):active:not(:disabled)
-            {
-                background-color: var(--button-active-background-color);
-            }
-
-            button:disabled,
-            chord-graph::part(panel-button):disabled {
-                color: var(--button-disabled-text-color);
-                border-color: var(--button-disabled-border-color);
-                background-color: var(--button-disabled-background-color);
             }
         </style>
     </head>
     <body>
         <h1>Chord Dancer</h1>
-        <volume-slider></volume-slider>
-        <chord-picker></chord-picker>
-        <chord-graph></chord-graph>
-        <div class="buttons">
-            <button id="undo" tabindex="0">Undo</button>
-            <button id="redo" tabindex="0">Redo</button>
-        </div>
-        <div class="buttons">
-            <button id="play" tabindex="0">Play</button>
-            <button id="stop" tabindex="0">Stop</button>
-            <button id="clear" tabindex="0">Clear</button>
-        </div>
-        <chord-sheet></chord-sheet>
+        <chord-dancer></chord-dancer>
+
         <p>
             To do:
             <ol>
