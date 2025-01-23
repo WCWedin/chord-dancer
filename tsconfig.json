@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "target": "esnext",
+      "allowJs": true,
+      "resolveJsonModule": true,
+      "moduleDetection": "force",
+      "isolatedModules": true,
+      "verbatimModuleSyntax": true,
+      "forceConsistentCasingInFileNames": true,
+
+      "strict": true,
+      "allowUnusedLabels": false,
+      "allowUnreachableCode": false,
+      "exactOptionalPropertyTypes": true,
+      "noFallthroughCasesInSwitch": true,
+      "noImplicitOverride": true,
+      "noImplicitReturns": true,
+      "noPropertyAccessFromIndexSignature": true,
+      "noUncheckedIndexedAccess": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+
+      "module": "NodeNext",
+      "outDir": "dist",
+
+      "sourceMap": true,
+      "declaration": true,
+      "composite": true,
+      "declarationMap": true,
+
+      "lib": ["esnext", "dom", "dom.iterable"]
+    }
+  }
