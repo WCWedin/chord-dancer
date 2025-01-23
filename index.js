@@ -121,13 +121,23 @@
       const newRoot = (root + third) % 12;
       const newThird = (12 + fifth - third) % 12;
       const newFifth = (12 - third) % 12;
-      return newRoot !== void 0 && _ChordHelper.chordNames[newThird]?.[newFifth] ? [newRoot, newThird, newFifth, octave] : void 0;
+      return newRoot !== void 0 && _ChordHelper.chordNames[newThird]?.[newFifth] ? [
+        newRoot,
+        newThird,
+        newFifth,
+        newRoot > root ? octave : Math.min(3, octave + 1)
+      ] : void 0;
     }
     static findSecondInversion(root, third, fifth, octave) {
       const newRoot = (root + fifth) % 12;
       const newThird = (12 - fifth) % 12;
       const newFifth = (12 + third - fifth) % 12;
-      return newRoot !== void 0 && _ChordHelper.chordNames[newThird]?.[newFifth] ? [newRoot, newThird, newFifth, octave] : void 0;
+      return newRoot !== void 0 && _ChordHelper.chordNames[newThird]?.[newFifth] ? [
+        newRoot,
+        newThird,
+        newFifth,
+        newRoot < root ? octave : Math.max(-3, octave - 1)
+      ] : void 0;
     }
     static findInversions(root, third, fifth, octave) {
       const rootPosition = _ChordHelper.findRootPosition(root, third, fifth, octave);

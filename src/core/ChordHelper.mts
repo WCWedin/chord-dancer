@@ -149,7 +149,11 @@ export class ChordHelper {
         const newFifth = (12 - third) % 12;
 
         return (newRoot !== undefined && ChordHelper.chordNames[newThird]?.[newFifth])
-            ? [newRoot, newThird, newFifth, octave]
+            ? [
+                newRoot,
+                newThird,
+                newFifth,
+                newRoot > root ? octave : Math.min(3, octave + 1)]
             : undefined;
     }
 
@@ -159,7 +163,11 @@ export class ChordHelper {
         const newFifth = (12 + third - fifth) % 12;
 
         return (newRoot !== undefined && ChordHelper.chordNames[newThird]?.[newFifth])
-            ? [newRoot, newThird, newFifth, octave]
+            ? [
+                newRoot,
+                newThird,
+                newFifth,
+                newRoot < root ? octave : Math.max(-3, octave - 1)]
             : undefined;
     }
 
