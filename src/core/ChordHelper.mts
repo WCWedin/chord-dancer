@@ -82,7 +82,7 @@ export class ChordHelper {
             newRoot,
             (third + 1) % 12,
             (fifth + 1) % 12,
-            newRoot < root ? octave : octave - 1
+            newRoot < root ? octave : Math.max(-3, octave - 1)
         ];
     }
 
@@ -92,7 +92,7 @@ export class ChordHelper {
             newRoot,
             (third - 1 + 12) % 12,
             (fifth - 1 + 12) % 12,
-            newRoot > root ? octave : octave + 1
+            newRoot > root ? octave : Math.min(3, octave + 1)
         ];
     }
 
