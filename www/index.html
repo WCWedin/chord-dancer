@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Chord Dancer</title>
+        <script src="/js/app.js"></script>
+        <style>
+            html {
+                font-family: system-ui;
+                --border-radius: 0.4em;
+                --chord-width: 11em;
+                --border-width: 0.15rem;
+                --theme-color: yellow;
+                --edit-color: aqua;
+                --insert-color: fuchsia;
+                --delete-color: red;
+            }
+
+            h1, h3 {
+                color: oklch(from var(--theme-color) 65% 20% h);
+            }
+
+            body {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Chord Dancer</h1>
+        <chord-dancer></chord-dancer>
+        <h3>To do</h3>
+        <ol>
+            <li>Save/load</li>
+            <li>Insert/delete</li>
+            <li>Improve keyboard navigation</li>
+            <li>Have chord picker update chord graph and add "Reset" button</li>
+            <li>Add current octave display to octave control panel</li>
+            <li>Have octave buttons update chord picker and current octave display instead of last chord</li>
+            <li>MusicXML export</li>
+            <li>MIDI export</li>
+            <li>Fix audio context muting after idle time in Safari</li>
+            <li>Highlight (in red?) any note without a hemitonic pitch-class neighbor in previous chord</li>
+        </ol>
+    </body>
+</html>
