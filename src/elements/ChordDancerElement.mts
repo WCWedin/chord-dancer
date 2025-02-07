@@ -153,7 +153,8 @@ class ChordDancerElement extends HTMLElement {
 
                 style.insertRule(`
                 button:disabled,
-                chord-graph::part(panel-button):disabled {
+                chord-graph::part(panel-button):disabled,
+                chord-picker::part(button):disabled {
                     color: var(--button-disabled-text-color);
                     border-color: var(--button-disabled-border-color);
                     background-color: var(--button-disabled-background-color);
@@ -198,6 +199,13 @@ class ChordDancerElement extends HTMLElement {
             this.#chordPicker.addEventListener("chordPushed", event => {
                 this.#pushChord(event);
             });
+            this.#chordPicker.addEventListener("chordPicked", event => {
+                this.#chordGraph.setAttribute("root", event.detail[0].toString());
+                this.#chordGraph.setAttribute("third", event.detail[1].toString());
+                this.#chordGraph.setAttribute("fifth", event.detail[2].toString());
+                this.#chordGraph.setAttribute("octave", event.detail[3].toString());
+                this.#chordPlayer.playChord(...event.detail);
+            });
         }
 
         { // Add chord graph.
@@ -208,13 +216,9 @@ class ChordDancerElement extends HTMLElement {
             this.#chordGraph.addEventListener("chordPushed", event => {
                 this.#pushChord(event);
             });
-            this.#chordGraph.addEventListener("octaveIncreased", () => {
-                if (this.#editingIndex === undefined) this.#chordHistory.increaseOctave();
-                else this.#chordHistory.increaseOctave(this.#editingIndex);
-            });
-            this.#chordGraph.addEventListener("octaveDecreased", () => {
-                if (this.#editingIndex === undefined) this.#chordHistory.decreaseOctave();
-                else this.#chordHistory.decreaseOctave(this.#editingIndex);
+            this.#chordGraph.addEventListener("chordPicked", event => {
+                this.#chordPicker.pickChord(event.detail);
+                this.#chordPlayer.playChord(...event.detail);
             });
         }
 
@@ -324,13 +328,11 @@ class ChordDancerElement extends HTMLElement {
                 ? this.#chordHistory.getChord(this.#editingIndex)!
                 : this.#chordHistory.latestChord;
             this.#setChord(...chord);
-            this.#chordGraph.setAttribute("active-chord", "");
             this.#chordPlayer.playChord(...chord);
             this.#clearButton.disabled = false;
             this.#playButton.disabled = false;
         } else {
             this.#setChord(0, ChordHelper.thirds.maj, ChordHelper.fifths.perf, 0);
-            this.#chordGraph.removeAttribute("active-chord");
             this.#clearButton.disabled = true;
             this.#playButton.disabled = true;
         }

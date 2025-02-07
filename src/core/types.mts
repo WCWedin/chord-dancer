@@ -8,6 +8,7 @@ export type IndexEvent = CustomEvent<{ index: number}>;
 declare global {
     interface HTMLElementEventMap {
         "chordPushed": ChordEvent;
+        "chordPicked": ChordEvent;
         "chordStarted": IndexEvent;
         "chordEnded": IndexEvent;
         "chordSelected": IndexEvent;

@@ -1,9 +1,9 @@
 export class OctaveControlElement extends HTMLElement {
     #octave: number = 0;
-    #disabled: boolean = false;
-
-    #upButton;
-    #downButton;
+    #octaveDisplay: HTMLDivElement;
+    #octaveDisplayValue: HTMLSpanElement;
+    #upButton: HTMLButtonElement;
+    #downButton: HTMLButtonElement;
 
     static observedAttributes = ["octave", "disabled"];
 
@@ -11,6 +11,17 @@ export class OctaveControlElement extends HTMLElement {
         super();
 
         const control = this.attachShadow({ mode: "closed" });
+
+        { // Add styles.
+            const style = new CSSStyleSheet();
+
+            style.insertRule(`
+            div {
+                text-align: center;
+            }`);
+
+            control.adoptedStyleSheets = [style];
+        }
 
         { // Add up button.
             this.#upButton = control.appendChild(document.createElement("button"));
@@ -25,6 +36,13 @@ export class OctaveControlElement extends HTMLElement {
                     }
                 ));
             });
+        }
+
+        { // Add octave display.
+            this.#octaveDisplay = control.appendChild(document.createElement("div"));
+            this.#octaveDisplay.innerText = "Octave: ";
+            this.#octaveDisplayValue = this.#octaveDisplay.appendChild(document.createElement("span"));
+            this.#octaveDisplayValue.innerText = this.#octave.toString();
         }
 
         { // Add down button.
@@ -48,18 +66,10 @@ export class OctaveControlElement extends HTMLElement {
 
         if (name === "octave") {
             this.#octave = parseInt(newValue);
-            this.#updateOctave();
+            this.#octaveDisplayValue.innerText = this.#octave.toString();
+            this.#downButton.disabled = this.#octave <= -3;
+            this.#upButton.disabled = this.#octave >= 3;
         }
-
-        if (name === "disabled") {
-            this.#disabled = newValue !== null;
-            this.#updateOctave();
-        }
-    }
-
-    #updateOctave() {
-        this.#downButton.disabled = this.#disabled || this.#octave <= -3;
-        this.#upButton.disabled = this.#disabled || this.#octave >= 3;
     }
 }
 

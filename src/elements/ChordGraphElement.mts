@@ -1,5 +1,5 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
-import type { Chord, ChordEvent } from "../core/types.mjs";
+import type { Chord } from "../core/types.mjs";
 import { type ChordCollectionElement, initChordCollectionElement } from "./ChordCollectionElement.mjs";
 import { type EditingPanelElement, initEditingPanelElement } from "./EditingPanelElement.mjs";
 import { type OctaveControlElement, initOctaveControlElement } from "./OctaveControlElement.mjs";
@@ -9,7 +9,6 @@ export class ChordGraphElement extends HTMLElement {
     #third?: number;
     #fifth?: number;
     #octave: number = 0;
-    #activeChord: boolean = false;
     #editing: boolean = false;
 
     #currentChordCollection: ChordCollectionElement;
@@ -23,7 +22,7 @@ export class ChordGraphElement extends HTMLElement {
     #editingPanel: EditingPanelElement;
     #octaveControl: OctaveControlElement;
 
-    static observedAttributes = ["root", "third", "fifth", "octave", "active-chord", "editing"];
+    static observedAttributes = ["root", "third", "fifth", "octave", "editing"];
 
     constructor() {
         super();
@@ -90,19 +89,17 @@ export class ChordGraphElement extends HTMLElement {
                         bubbles: true,
                         detail: event.detail
                     }
-                ) as ChordEvent));
-                table.addEventListener("octaveIncreased", () => this.dispatchEvent(new Event(
-                    "octaveIncreased",
-                    {
-                        bubbles: true
-                    }
                 )));
-                table.addEventListener("octaveDecreased", () => this.dispatchEvent(new Event(
-                    "octaveDecreased",
-                    {
-                        bubbles: true
-                    }
-                )));
+                table.addEventListener("octaveIncreased", () => {
+                    ++this.#octave;
+                    this.setAttribute("octave", this.#octave.toString());
+                    this.#dispatchOctaveChange();
+                });
+                table.addEventListener("octaveDecreased", () => {
+                    --this.#octave;
+                    this.setAttribute("octave", this.#octave.toString());
+                    this.#dispatchOctaveChange();
+                });
                 table.addEventListener("stop", () => this.dispatchEvent(new Event(
                     "stopEditing",
                     {
@@ -165,12 +162,8 @@ export class ChordGraphElement extends HTMLElement {
         }
         if (name === "octave") {
             this.#octave = parseInt(newValue);
+            this.#updateOctave();
             this.#updateChordCollections();
-            this.#updateOctave();
-        }
-        if (name === "active-chord") {
-            this.#activeChord = newValue !== null;
-            this.#updateOctave();
         }
         if (name === "editing") {
             this.#editing = newValue !== null;
@@ -201,11 +194,6 @@ export class ChordGraphElement extends HTMLElement {
     }
 
     #updateOctave() {
-        if (this.#activeChord) {
-            this.#octaveControl.removeAttribute("disabled");
-        } else {
-            this.#octaveControl.setAttribute("disabled", "");
-        }
         this.#octaveControl.setAttribute("octave", this.#octave.toString());
     }
 
@@ -215,6 +203,21 @@ export class ChordGraphElement extends HTMLElement {
         } else {
             this.#editingPanel.setAttribute("disabled", "");
         }
+    }
+
+    #dispatchOctaveChange() {
+        this.dispatchEvent(new CustomEvent<Chord>(
+            this.#editing ? "chordPushed" : "chordPicked",
+            {
+                bubbles: true,
+                detail: [
+                    this.#root!,
+                    this.#third!,
+                    this.#fifth!,
+                    this.#octave
+                ]
+            }
+        ));
     }
 }
 
