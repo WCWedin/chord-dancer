@@ -1,6 +1,7 @@
 import { Renderer, StaveNote, TextNote, RenderContext, Stave, Voice, Formatter } from "vexflow";
 import { StaveHelper } from "../core/StaveHelper.mjs";
 import type { State, IndexEvent } from "../core/types.mjs";
+import { defineElement } from "../core/dom.mjs";
 
 export class ChordSheetElement extends HTMLElement {
     #container;
@@ -189,7 +190,7 @@ export class ChordSheetElement extends HTMLElement {
 }
 
 export function initChordSheetElement() {
-    customElements.define("chord-sheet", ChordSheetElement);
+    defineElement("chord-sheet", ChordSheetElement);
 }
 
 declare global {

@@ -1,7 +1,7 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
+import { defineElement } from "../core/dom.mjs";
 import type { Chord } from "../core/types.mjs";
 import { type ChordCollectionElement, initChordCollectionElement } from "./ChordCollectionElement.mjs";
-import { type EditingPanelElement, initEditingPanelElement } from "./EditingPanelElement.mjs";
 import { type OctaveControlElement, initOctaveControlElement } from "./OctaveControlElement.mjs";
 
 export class ChordGraphElement extends HTMLElement {
@@ -9,7 +9,6 @@ export class ChordGraphElement extends HTMLElement {
     #third?: number;
     #fifth?: number;
     #octave: number = 0;
-    #editing: boolean = false;
 
     #currentChordCollection: ChordCollectionElement;
     #raiseRootCollection: ChordCollectionElement;
@@ -19,7 +18,6 @@ export class ChordGraphElement extends HTMLElement {
     #raiseFifthCollection: ChordCollectionElement;
     #lowerFifthCollection: ChordCollectionElement;
 
-    #editingPanel: EditingPanelElement;
     #octaveControl: OctaveControlElement;
 
     static observedAttributes = ["root", "third", "fifth", "octave", "editing"];
@@ -62,7 +60,6 @@ export class ChordGraphElement extends HTMLElement {
                 padding: 0 0.25em;
             }`);
             style.insertRule(`
-            editing-panel::part(button),
             chord-collection::part(button),
             octave-control::part(button) {
                 margin: 0.25em 0;
@@ -84,7 +81,7 @@ export class ChordGraphElement extends HTMLElement {
 
             { // Add top-level event handlers.
                 table.addEventListener("chordPushed", (event) => this.dispatchEvent(new CustomEvent<Chord>(
-                    "chordPushed",
+                    "chordPicked",
                     {
                         bubbles: true,
                         detail: event.detail
@@ -100,23 +97,14 @@ export class ChordGraphElement extends HTMLElement {
                     this.setAttribute("octave", this.#octave.toString());
                     this.#dispatchOctaveChange();
                 });
-                table.addEventListener("stop", () => this.dispatchEvent(new Event(
-                    "stopEditing",
-                    {
-                        bubbles: true
-                    }
-                )));
             }
 
-            const editingPanelExportedParts = "button, button:panel-button";
             const octaveControlExportedParts = "button, button:panel-button";
             const chordCollectionExportedParts = "button";
 
             { // Add top row.
                 const topRow = table.appendChild(document.createElement("div"));
-                this.#editingPanel = topRow.appendChild(document.createElement("editing-panel"));
-                this.#editingPanel.setAttribute("exportparts", editingPanelExportedParts);
-                this.#editingPanel.setAttribute("disabled", "");
+                topRow.appendChild(document.createElement("div"));
                 this.#raiseRootCollection = topRow.appendChild(document.createElement("chord-collection"));
                 this.#raiseRootCollection.setAttribute("exportparts", chordCollectionExportedParts);
                 this.#raiseThirdCollection = topRow.appendChild(document.createElement("chord-collection"));
@@ -165,10 +153,6 @@ export class ChordGraphElement extends HTMLElement {
             this.#updateOctave();
             this.#updateChordCollections();
         }
-        if (name === "editing") {
-            this.#editing = newValue !== null;
-            this.#updateEditingPanel();
-        }
     }
 
     #updateChordCollection(chordCollection: ChordCollectionElement, root: number, third: number, fifth: number, octave: number) {
@@ -197,17 +181,9 @@ export class ChordGraphElement extends HTMLElement {
         this.#octaveControl.setAttribute("octave", this.#octave.toString());
     }
 
-    #updateEditingPanel() {
-        if (this.#editing) {
-            this.#editingPanel.removeAttribute("disabled");
-        } else {
-            this.#editingPanel.setAttribute("disabled", "");
-        }
-    }
-
     #dispatchOctaveChange() {
         this.dispatchEvent(new CustomEvent<Chord>(
-            this.#editing ? "chordPushed" : "chordPicked",
+            "chordPicked",
             {
                 bubbles: true,
                 detail: [
@@ -223,9 +199,8 @@ export class ChordGraphElement extends HTMLElement {
 
 export function initChordGraphElement() {
     initChordCollectionElement();
-    initEditingPanelElement();
     initOctaveControlElement();
-    customElements.define("chord-graph", ChordGraphElement);
+    defineElement("chord-graph", ChordGraphElement);
 }
 
 declare global {

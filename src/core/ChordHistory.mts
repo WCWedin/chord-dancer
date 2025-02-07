@@ -64,6 +64,51 @@ export class ChordHistory extends EventTarget {
         ], index);
     }
 
+    insertBefore(index: number, chord: Chord) {
+        if (this.currentChords[index] === undefined) {
+            console.warn(`Attempted to call insertBefore on chord with index ${index}, which does not exist.`);
+            return;
+        }
+
+        this.#pushState([
+            ...this.currentChords.slice(0, index),
+            chord,
+            ...this.currentChords.slice(index)
+        ], index);
+    }
+
+    insertAfter(index: number, chord: Chord) {
+        if (this.currentChords[index] === undefined) {
+            console.warn(`Attempted to call insertAfter on chord with index ${index}, which does not exist.`);
+            return;
+        }
+
+        this.#pushState([
+            ...this.currentChords.slice(0, index + 1),
+            chord,
+            ...this.currentChords.slice(index + 1)
+        ], index + 1);
+    }
+
+    delete(index: number) {
+        if (this.currentChords[index] === undefined) {
+            console.warn(`Attempted to call delete on chord with index ${index}, which does not exist.`);
+            return;
+        }
+
+        let newIndex: number | undefined ;
+        if (this.currentChords.length === 1) newIndex = undefined;
+        else {
+            newIndex = index <= this.currentChords.length - 2 ? index : this.currentChords.length - 2;
+            newIndex = newIndex > 0 ? newIndex : 0;
+        }
+
+        this.#pushState([
+            ...this.currentChords.slice(0, index),
+            ...this.currentChords.slice(index + 1)
+        ], newIndex);
+    }
+
     clear() {
         if (this.latestChord) this.#pushState([]);
     }

@@ -3,22 +3,23 @@ export type State = Chord[];
 export type Selection = number | undefined;
 
 export type ChordEvent = CustomEvent<Chord>;
-export type IndexEvent = CustomEvent<{ index: number}>;
+export type IndexEvent = CustomEvent<{ index: number }>;
 
 declare global {
-    interface HTMLElementEventMap {
-        "chordPushed": ChordEvent;
-        "chordPicked": ChordEvent;
-        "chordStarted": IndexEvent;
-        "chordEnded": IndexEvent;
-        "chordSelected": IndexEvent;
-    }
+  interface HTMLElementEventMap {
+    "chordPushed": ChordEvent;
+    "chordPicked": ChordEvent;
+    "updateChord": ChordEvent;
+    "insertChordBefore": ChordEvent;
+    "insertChordAfter": ChordEvent;
+    "chordStarted": IndexEvent;
+    "chordEnded": IndexEvent;
+    "chordSelected": IndexEvent;
+  }
 }
 
-export type TypedEventTarget<EventMap extends object> =
-  { new (): IntermediateEventTarget<EventMap>; };
+export type TypedEventTarget<EventMap extends object> = { new(): IntermediateEventTarget<EventMap>; };
 
-// internal helper type
 export interface IntermediateEventTarget<EventMap> extends EventTarget {
   addEventListener<K extends keyof EventMap>(
     type: K,

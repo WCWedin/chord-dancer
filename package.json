@@ -5,7 +5,7 @@
   "main": "./src/app.mts",
   "scripts": {
     "build": "esbuild src/app.mts --bundle --minify --sourcemap --metafile=app-meta.json --outfile=www/js/app.js",
-    "start": "esbuild src/app.mts --bundle --minify --sourcemap --metafile=app-meta.json --outfile=www/js/app.js --servedir=www --watch",
+    "start": "esbuild src/app.mts --bundle --sourcemap --outfile=www/js/app.js --servedir=www --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

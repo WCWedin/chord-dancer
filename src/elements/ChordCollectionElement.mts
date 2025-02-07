@@ -1,6 +1,7 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
 import { initChordButtonElement } from "./ChordButtonElement.mjs"
 import type { Chord, ChordEvent } from "../core/types.mjs";
+import { defineElement } from "../core/dom.mjs";
 
 export class ChordCollectionElement extends HTMLElement {
     #root?: number;
@@ -108,7 +109,7 @@ export class ChordCollectionElement extends HTMLElement {
 
 export function initChordCollectionElement() {
     initChordButtonElement();
-    customElements.define("chord-collection", ChordCollectionElement);
+    defineElement("chord-collection", ChordCollectionElement);
 }
 
 declare global {

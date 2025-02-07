@@ -59,18 +59,18 @@ export class ChordHelper {
         })
     });
 
-    static nameChord(root: number, third: number, fifth: number): string | undefined {
-        const rootName = ChordHelper.noteNames[root];
-        const chordName = ChordHelper.chordNames[third]?.[fifth];
+    static nameChord(root?: number, third?: number, fifth?: number): string | undefined {
+        const rootName = ChordHelper.noteNames[root!];
+        const chordName = ChordHelper.chordNames[third!]?.[fifth!];
         return (rootName && chordName)
             ? `${rootName}${chordName}`
             : undefined;
     }
 
-    static spellChord(root: number, third: number, fifth: number): string | undefined {
-        const rootName = ChordHelper.noteNames[root];
-        const thirdName = ChordHelper.noteNames[(root + third) % 12];
-        const fifthName = ChordHelper.noteNames[(root + fifth) % 12];
+    static spellChord(root?: number, third?: number, fifth?: number): string | undefined {
+        const rootName = ChordHelper.noteNames[root!];
+        const thirdName = ChordHelper.noteNames[(root! + third!) % 12];
+        const fifthName = ChordHelper.noteNames[(root! + fifth!) % 12];
         return (rootName && thirdName && fifthName)
             ? `${rootName} ${thirdName} ${fifthName}`
             : undefined;

@@ -1,10 +1,12 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
 import { ChordHistory } from "../core/ChordHistory.mjs";
 import { ChordPlayer } from "../core/ChordPlayer.mjs";
+import { defineElement } from "../core/dom.mjs";
 import type { Chord } from "../core/types.mjs";
 import { type ChordGraphElement, initChordGraphElement } from "./ChordGraphElement.mjs";
 import { type ChordPickerElement, initChordPickerElement } from "./ChordPickerElement.mjs";
 import { type ChordSheetElement, initChordSheetElement } from "./ChordSheetElement.mjs";
+import { type EditingPanelElement, initEditingPanelElement } from "./EditingPanelElement.mjs";
 import { type VolumeSliderElement, initVolumeSliderElement } from "./VolumeSliderElement.mjs";
 
 class ChordDancerElement extends HTMLElement {
@@ -12,6 +14,7 @@ class ChordDancerElement extends HTMLElement {
     #chordPlayer: ChordPlayer;
     #volumeSlider: VolumeSliderElement;
     #chordPicker: ChordPickerElement;
+    #editingPanel: EditingPanelElement;
     #chordGraph: ChordGraphElement;
     #chordSheet: ChordSheetElement;
 
@@ -36,6 +39,7 @@ class ChordDancerElement extends HTMLElement {
             style.insertRule(`
             #body,
             chord-picker,
+            editing-panel,
             chord-graph {
                 --border: var(--border-width) solid var(--border-color);
             }`);
@@ -64,6 +68,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 #body,
                 chord-picker,
+                editing-panel,
                 chord-graph {
                     --button-text-color: oklch(from var(--theme-color) 30% 30% h);
                     --button-background-color: oklch(from var(--theme-color) 98% 2% h);
@@ -81,26 +86,17 @@ class ChordDancerElement extends HTMLElement {
                     --playing-text-color: oklch(from var(--theme-color) 50% 50% h);
                     --selected-color: oklch(from var(--edit-color) 60% 30% h);
                     --selected-text-color: oklch(from var(--edit-color) 50% 50% h);
-
-                    &[inserting] {
-                        --edit-color: var(--insert-color);
-                    }
                 }`);
 
                 style.insertRule(`
-                chord-picker,
-                chord-graph {
-                    &[editing] {
-                        --theme-color: var(--edit-color);
-                    }
-
-                    &[inserting] {
-                        --theme-color: var(--insert-color);
-                    }
+                chord-picker[editing],
+                editing-panel,
+                chord-graph[editing] {
+                    --theme-color: var(--edit-color);
                 }`);
             }
 
-            { // Add button rules.
+            { // Add button and form control rules.
                 style.insertRule(`
                 button,
                 chord-picker::part(control) {
@@ -110,6 +106,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 button,
                 chord-picker::part(control),
+                editing-panel::part(button),
                 chord-graph::part(panel-button) {
                     border: var(--border);
                     background-color: var(--button-background-color);
@@ -118,6 +115,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 button,
                 chord-picker::part(control),
+                editing-panel::part(button),
                 chord-graph::part(button) {
                     color: var(--button-text-color);
                     border-radius: var(--border-radius);
@@ -130,6 +128,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 button:focus-visible:not(:hover, :active, :disabled),
                 chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
+                editing-panel::part(button):focus-visible:not(:hover, :active, :disabled),
                 chord-graph::part(button):focus-visible:not(:hover, :active, :disabled)
                 {
                     background-color: var(--button-active-background-color);
@@ -138,6 +137,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 button:hover:not(:active, :disabled),
                 chord-picker::part(control):hover:not(:active, :disabled),
+                editing-panel::part(button):hover:not(:active, :disabled),
                 chord-graph::part(button):hover:not(:active, :disabled)
                 {
                     background-color: var(--button-hover-background-color);
@@ -146,6 +146,7 @@ class ChordDancerElement extends HTMLElement {
                 style.insertRule(`
                 button:active:not(:disabled),
                 chord-picker::part(button):active:not(:disabled),
+                editing-panel::part(button):active:not(:disabled),
                 chord-graph::part(button):active:not(:disabled)
                 {
                     background-color: var(--button-active-background-color);
@@ -153,8 +154,9 @@ class ChordDancerElement extends HTMLElement {
 
                 style.insertRule(`
                 button:disabled,
-                chord-graph::part(panel-button):disabled,
-                chord-picker::part(button):disabled {
+                chord-picker::part(button):disabled,
+                editing-panel::part(button):disabled,
+                chord-graph::part(panel-button):disabled {
                     color: var(--button-disabled-text-color);
                     border-color: var(--button-disabled-border-color);
                     background-color: var(--button-disabled-background-color);
@@ -197,27 +199,54 @@ class ChordDancerElement extends HTMLElement {
         { // Add chord picker.
             this.#chordPicker = body.appendChild(document.createElement("chord-picker"));
             this.#chordPicker.addEventListener("chordPushed", event => {
+                // TODO: hide button when chord is selected, or change append workflow
                 this.#pushChord(event);
             });
             this.#chordPicker.addEventListener("chordPicked", event => {
+                this.#editingPanel.setAttribute("new-root", event.detail[0].toString());
+                this.#editingPanel.setAttribute("new-third", event.detail[1].toString());
+                this.#editingPanel.setAttribute("new-fifth", event.detail[2].toString());
+                this.#editingPanel.setAttribute("new-octave", event.detail[3].toString());
+
                 this.#chordGraph.setAttribute("root", event.detail[0].toString());
                 this.#chordGraph.setAttribute("third", event.detail[1].toString());
                 this.#chordGraph.setAttribute("fifth", event.detail[2].toString());
                 this.#chordGraph.setAttribute("octave", event.detail[3].toString());
+
                 this.#chordPlayer.playChord(...event.detail);
+            });
+        }
+
+        { // Add editing panel
+            this.#editingPanel = body.appendChild(document.createElement("editing-panel"));
+            this.#editingPanel.addEventListener("stopEditing", () => {
+                this.#handleDeselection();
+            });
+            this.#editingPanel.addEventListener("updateChord", (event) => {
+                this.#chordHistory.edit(this.#editingIndex!, event.detail)
+            });
+            this.#editingPanel.addEventListener("insertChordBefore", (event) => {
+                const index = this.#editingIndex!;
+                this.#editingIndex = -1;
+                this.#chordHistory.insertBefore(index, event.detail);
+            });
+            this.#editingPanel.addEventListener("insertChordAfter", (event) => {
+                const index = this.#editingIndex!;
+                this.#editingIndex = -1;
+                this.#chordHistory.insertAfter(index, event.detail)
+            });
+            this.#editingPanel.addEventListener("deleteChord", () => {
+                const index = this.#editingIndex!;
+                this.#editingIndex = -1;
+                this.#chordHistory.delete(index);
             });
         }
 
         { // Add chord graph.
             this.#chordGraph = body.appendChild(document.createElement("chord-graph"));
-            this.#chordGraph.addEventListener("stopEditing", () => {
-                this.#handleDeselection();
-            });
-            this.#chordGraph.addEventListener("chordPushed", event => {
-                this.#pushChord(event);
-            });
             this.#chordGraph.addEventListener("chordPicked", event => {
-                this.#chordPicker.pickChord(event.detail);
+                if (this.#editingIndex === undefined) this.#pushChord(event);
+                else this.#chordPicker.pickChord(event.detail);
             });
         }
 
@@ -283,7 +312,13 @@ class ChordDancerElement extends HTMLElement {
 
     #pushChord(event: CustomEvent<Chord>) {
         if (this.#editingIndex === undefined) this.#chordHistory.push(event.detail);
-        else this.#chordHistory.edit(this.#editingIndex, event.detail);
+        else {
+            this.#editingPanel.setAttribute("new-root", event.detail[0].toString());
+            this.#editingPanel.setAttribute("new-third", event.detail[1].toString());
+            this.#editingPanel.setAttribute("new-fifth", event.detail[2].toString());
+            this.#editingPanel.setAttribute("new-octave", event.detail[3].toString());
+            //
+        };
     }
 
     #handleDeselection() {
@@ -299,6 +334,11 @@ class ChordDancerElement extends HTMLElement {
         this.#chordGraph.setAttribute("fifth", fifth.toString());
         this.#chordGraph.setAttribute("octave", octave.toString());
 
+        this.#editingPanel.setAttribute("root", root.toString());
+        this.#editingPanel.setAttribute("third", third.toString());
+        this.#editingPanel.setAttribute("fifth", fifth.toString());
+        this.#editingPanel.setAttribute("octave", octave.toString());
+
         this.#chordPicker.setAttribute("root", root.toString());
         this.#chordPicker.setAttribute("third", third.toString());
         this.#chordPicker.setAttribute("fifth", fifth.toString());
@@ -310,12 +350,15 @@ class ChordDancerElement extends HTMLElement {
         this.#stopButton.disabled = true;
 
         if (this.#editingIndex === -1) this.#editingIndex = this.#chordHistory.selectedIndex;
+
         if (this.#editingIndex !== undefined) {
+            this.#editingPanel.removeAttribute("disabled");
             this.#chordPicker.setAttribute("editing", "");
             this.#chordGraph.setAttribute("editing", "");
         } else {
             this.#chordPicker.removeAttribute("editing");
             this.#chordGraph.removeAttribute("editing");
+            this.#editingPanel.setAttribute("disabled", "");
         }
 
         if (this.#chordHistory.latestChord &&
@@ -346,11 +389,12 @@ class ChordDancerElement extends HTMLElement {
 }
 
 export function initChordDancerElement() {
-    initChordGraphElement();
-    initChordPickerElement();
-    initChordSheetElement();
     initVolumeSliderElement();
-    customElements.define("chord-dancer", ChordDancerElement);
+    initChordPickerElement();
+    initEditingPanelElement();
+    initChordGraphElement();
+    initChordSheetElement();
+    defineElement("chord-dancer", ChordDancerElement);
 }
 
 declare global {

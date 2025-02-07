@@ -1,3 +1,5 @@
+import { defineElement } from "../core/dom.mjs";
+
 export class VolumeSliderElement extends HTMLElement {
     #input: HTMLInputElement;
 
@@ -104,7 +106,7 @@ export class VolumeSliderElement extends HTMLElement {
 }
 
 export function initVolumeSliderElement() {
-    customElements.define("volume-slider", VolumeSliderElement);
+    defineElement("volume-slider", VolumeSliderElement);
 }
 
 declare global {

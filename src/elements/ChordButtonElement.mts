@@ -1,4 +1,5 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
+import { defineElement } from "../core/dom.mjs";
 import type { ChordEvent } from "../core/types.mjs";
 
 export class ChordButtonElement extends HTMLElement {
@@ -7,7 +8,7 @@ export class ChordButtonElement extends HTMLElement {
     #fifth?: number;
     #octave: number = 0;
 
-    #chord;
+    #shadowRoot;
     #button;
 
     static observedAttributes = ["root", "third", "fifth", "octave"];
@@ -15,7 +16,7 @@ export class ChordButtonElement extends HTMLElement {
     constructor() {
         super();
 
-        this.#chord = this.attachShadow({ mode: "closed" });
+        this.#shadowRoot = this.attachShadow({ mode: "closed" });
 
         { // Add button.
             this.#button = document.createElement("button");
@@ -39,17 +40,13 @@ export class ChordButtonElement extends HTMLElement {
     }
 
     #updateButton() {
-        if (this.#root === undefined
-            || this.#third === undefined
-            || this.#fifth === undefined) return;
-
         const chordName = ChordHelper.nameChord(this.#root, this.#third, this.#fifth);
-        const chordSpelling = ChordHelper.spellChord(this.#root!, this.#third!, this.#fifth!);
+        const chordSpelling = ChordHelper.spellChord(this.#root, this.#third, this.#fifth);
         this.#button.innerText = `${chordName} (${chordSpelling})`;
         if (chordName) {
-            this.#chord.appendChild(this.#button);
-        } else if (this.#chord.contains(this.#button)) {
-            this.#chord.removeChild(this.#button);
+            this.#shadowRoot.appendChild(this.#button);
+        } else if (this.#shadowRoot.contains(this.#button)) {
+            this.#shadowRoot.removeChild(this.#button);
         }
     }
 
@@ -65,7 +62,7 @@ export class ChordButtonElement extends HTMLElement {
 }
 
 export function initChordButtonElement() {
-    customElements.define("chord-button", ChordButtonElement);
+    defineElement("chord-button", ChordButtonElement);
 }
 
 declare global {

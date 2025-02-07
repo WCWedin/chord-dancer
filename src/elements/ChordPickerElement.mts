@@ -1,4 +1,5 @@
 import { ChordHelper } from "../core/ChordHelper.mjs";
+import { defineElement } from "../core/dom.mjs";
 import type { Chord, ChordEvent } from "../core/types.mjs";
 
 export class ChordPickerElement extends HTMLElement {
@@ -187,7 +188,7 @@ export class ChordPickerElement extends HTMLElement {
 }
 
 export function initChordPickerElement() {
-    customElements.define("chord-picker", ChordPickerElement);
+    defineElement("chord-picker", ChordPickerElement);
 }
 
 declare global {

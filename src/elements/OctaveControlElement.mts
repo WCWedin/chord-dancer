@@ -1,3 +1,5 @@
+import { defineElement } from "../core/dom.mjs";
+
 export class OctaveControlElement extends HTMLElement {
     #octave: number = 0;
     #octaveDisplay: HTMLDivElement;
@@ -74,7 +76,7 @@ export class OctaveControlElement extends HTMLElement {
 }
 
 export function initOctaveControlElement() {
-    customElements.define("octave-control", OctaveControlElement);
+    defineElement("octave-control", OctaveControlElement);
 }
 
 declare global {
