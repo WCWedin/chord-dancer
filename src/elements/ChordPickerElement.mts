@@ -147,10 +147,6 @@ export class ChordPickerElement extends HTMLElement {
 
     #handleChordPicked() {
         this.dispatchEvent(new CustomEvent<Chord>("chordPicked", { detail: this.#chord }));
-        this.#updateResetButton();
-    }
-
-    #updateResetButton() {
         this.#resetButton.disabled = 
             this.#rootPicker.value === this.getAttribute("root")
             && this.#thirdPicker.value === this.getAttribute("third")
@@ -186,7 +182,7 @@ export class ChordPickerElement extends HTMLElement {
         this.#thirdPicker.value = chord[1].toString();
         this.#fifthPicker.value = chord[2].toString();
         this.#octavePicker.value = chord[3].toString();
-        this.#updateResetButton();
+        this.#handleChordPicked();
     }
 }
 

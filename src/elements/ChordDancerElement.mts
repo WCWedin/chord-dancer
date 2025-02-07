@@ -218,7 +218,6 @@ class ChordDancerElement extends HTMLElement {
             });
             this.#chordGraph.addEventListener("chordPicked", event => {
                 this.#chordPicker.pickChord(event.detail);
-                this.#chordPlayer.playChord(...event.detail);
             });
         }
 
