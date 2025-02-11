@@ -47,8 +47,8 @@ export class ChordHistory extends EventTarget {
         ]);
     }
 
-    edit(index: number, chord: Chord) {
-        if (this.currentChords[index] === undefined) {
+    edit(index: number | undefined, chord: Chord) {
+        if (index === undefined || this.currentChords[index] === undefined) {
             console.warn(`Attempted to call edit on chord with index ${index}, which does not exist.`);
             return;
         }
@@ -64,8 +64,8 @@ export class ChordHistory extends EventTarget {
         ], index);
     }
 
-    insertBefore(index: number, chord: Chord) {
-        if (this.currentChords[index] === undefined) {
+    insertBefore(index: number | undefined, chord: Chord) {
+        if (index === undefined || this.currentChords[index] === undefined) {
             console.warn(`Attempted to call insertBefore on chord with index ${index}, which does not exist.`);
             return;
         }
@@ -77,8 +77,8 @@ export class ChordHistory extends EventTarget {
         ], index);
     }
 
-    insertAfter(index: number, chord: Chord) {
-        if (this.currentChords[index] === undefined) {
+    insertAfter(index: number | undefined, chord: Chord) {
+        if (index === undefined || this.currentChords[index] === undefined) {
             console.warn(`Attempted to call insertAfter on chord with index ${index}, which does not exist.`);
             return;
         }
@@ -90,8 +90,8 @@ export class ChordHistory extends EventTarget {
         ], index + 1);
     }
 
-    delete(index: number) {
-        if (this.currentChords[index] === undefined) {
+    delete(index: number | undefined) {
+        if (index === undefined || this.currentChords[index] === undefined) {
             console.warn(`Attempted to call delete on chord with index ${index}, which does not exist.`);
             return;
         }
@@ -113,8 +113,8 @@ export class ChordHistory extends EventTarget {
         if (this.latestChord) this.#pushState([]);
     }
 
-    #setOctave(index: number, octave: number) {
-        if (this.currentChords[index] === undefined) {
+    #setOctave(index: number | undefined, octave: number) {
+        if (index === undefined || this.currentChords[index] === undefined) {
             console.warn(`Attempted to call #setOctave on chord with index ${index}, which does not exist.`);
             return;
         }
@@ -127,7 +127,7 @@ export class ChordHistory extends EventTarget {
         ]);
     }
 
-    increaseOctave(index?: number) {
+    increaseOctave(index?: number | undefined) {
         index = index ?? this.#latestIndex;
 
         if (this.currentChords[index] === undefined) {
@@ -138,7 +138,7 @@ export class ChordHistory extends EventTarget {
         this.#setOctave(index, this.currentChords[index]![3]! + 1);
     }
 
-    decreaseOctave(index?: number) {
+    decreaseOctave(index?: number | undefined) {
         index = index ?? this.#latestIndex;
 
         if (this.currentChords[index] === undefined) {
