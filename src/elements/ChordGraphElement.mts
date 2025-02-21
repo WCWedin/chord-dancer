@@ -20,7 +20,7 @@ export class ChordGraphElement extends HTMLElement {
 
     #octaveControl: OctaveControlElement;
 
-    static observedAttributes = ["root", "third", "fifth", "octave", "editing"];
+    static observedAttributes = ["root", "third", "fifth", "octave"];
 
     constructor() {
         super();

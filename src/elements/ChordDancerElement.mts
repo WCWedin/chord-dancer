@@ -2,7 +2,6 @@ import { ChordHelper } from "../core/ChordHelper.mjs";
 import { ChordHistory } from "../core/ChordHistory.mjs";
 import { ChordPlayer } from "../core/ChordPlayer.mjs";
 import { defineElement } from "../core/dom.mjs";
-import type { Chord } from "../core/types.mjs";
 import { EditingPosition, noPosition, historicPosition, updatedPosition, retainedPosition } from "../core/EditingPosition.mjs";
 import { type ChordGraphElement, initChordGraphElement } from "./ChordGraphElement.mjs";
 import { type ChordPickerElement, initChordPickerElement } from "./ChordPickerElement.mjs";
@@ -91,7 +90,7 @@ class ChordDancerElement extends HTMLElement {
 
                 style.insertRule(`
                 chord-picker[editing],
-                editing-panel,
+                editing-panel[editing],
                 chord-graph[editing] {
                     --theme-color: var(--edit-color);
                 }`);
@@ -199,20 +198,16 @@ class ChordDancerElement extends HTMLElement {
 
         { // Add chord picker.
             this.#chordPicker = body.appendChild(document.createElement("chord-picker"));
-            this.#chordPicker.addEventListener("chordPushed", event => {
-                this.#pushChord(event);
-            });
             this.#chordPicker.addEventListener("chordPicked", event => {
-                this.#editingPanel.setAttribute("new-root", event.detail[0].toString());
-                this.#editingPanel.setAttribute("new-third", event.detail[1].toString());
-                this.#editingPanel.setAttribute("new-fifth", event.detail[2].toString());
-                this.#editingPanel.setAttribute("new-octave", event.detail[3].toString());
+                this.#setNewChord(...event.detail);
+                this.#chordPlayer.playChord(...event.detail);
+            });
+        }
 
-                this.#chordGraph.setAttribute("root", event.detail[0].toString());
-                this.#chordGraph.setAttribute("third", event.detail[1].toString());
-                this.#chordGraph.setAttribute("fifth", event.detail[2].toString());
-                this.#chordGraph.setAttribute("octave", event.detail[3].toString());
-
+        { // Add chord graph.
+            this.#chordGraph = body.appendChild(document.createElement("chord-graph"));
+            this.#chordGraph.addEventListener("chordPicked", event => {
+                this.#setNewChord(...event.detail);
                 this.#chordPlayer.playChord(...event.detail);
             });
         }
@@ -221,6 +216,13 @@ class ChordDancerElement extends HTMLElement {
             this.#editingPanel = body.appendChild(document.createElement("editing-panel"));
             this.#editingPanel.addEventListener("stopEditing", () => {
                 this.#handleDeselection();
+            });
+            this.#editingPanel.addEventListener("resetChord", (event) => {
+                this.#setNewChord(...event.detail);
+                this.#chordPlayer.playChord(...event.detail);
+            });
+            this.#editingPanel.addEventListener("appendChord", (event) => {
+                this.#chordHistory.push(event.detail)
             });
             this.#editingPanel.addEventListener("updateChord", (event) => {
                 const position = this.#editingPosition.position!;
@@ -243,19 +245,11 @@ class ChordDancerElement extends HTMLElement {
             });
         }
 
-        { // Add chord graph.
-            this.#chordGraph = body.appendChild(document.createElement("chord-graph"));
-            this.#chordGraph.addEventListener("chordPicked", event => {
-                if (this.#editingPosition.positionType === noPosition) this.#pushChord(event);
-                else this.#chordPicker.pickChord(event.detail);
-            });
-        }
+        { // Add state buttons.
+            const stateButtons = body.appendChild(document.createElement("div"));
+            stateButtons.classList.add("buttons");
 
-        { // Add edit buttons.
-            const editButtons = body.appendChild(document.createElement("div"));
-            editButtons.classList.add("buttons");
-
-            this.#undoButton = editButtons.appendChild(document.createElement("button"));
+            this.#undoButton = stateButtons.appendChild(document.createElement("button"));
             this.#undoButton.tabIndex = 0;
             this.#undoButton.append(document.createTextNode("Undo"));
             this.#undoButton.addEventListener("click", () => {
@@ -263,7 +257,7 @@ class ChordDancerElement extends HTMLElement {
                 this.#chordHistory.undo();
             });
 
-            this.#redoButton = editButtons.appendChild(document.createElement("button"));
+            this.#redoButton = stateButtons.appendChild(document.createElement("button"));
             this.#redoButton.tabIndex = 0;
             this.#redoButton.append(document.createTextNode("Redo"));
             this.#redoButton.addEventListener("click", () => {
@@ -271,7 +265,7 @@ class ChordDancerElement extends HTMLElement {
                 this.#chordHistory.redo();
             });
 
-            this.#clearButton = editButtons.appendChild(document.createElement("button"));
+            this.#clearButton = stateButtons.appendChild(document.createElement("button"));
             this.#clearButton.tabIndex = 0;
             this.#clearButton.append(document.createTextNode("Clear"));
             this.#clearButton.addEventListener("click", () => {
@@ -311,16 +305,6 @@ class ChordDancerElement extends HTMLElement {
         this.#updateUI();
     }
 
-    #pushChord(event: CustomEvent<Chord>) {
-        if (this.#editingPosition.positionType === noPosition) this.#chordHistory.push(event.detail);
-        else {
-            this.#editingPanel.setAttribute("new-root", event.detail[0].toString());
-            this.#editingPanel.setAttribute("new-third", event.detail[1].toString());
-            this.#editingPanel.setAttribute("new-fifth", event.detail[2].toString());
-            this.#editingPanel.setAttribute("new-octave", event.detail[3].toString());
-        };
-    }
-
     #handleDeselection() {
         if (this.#editingPosition.positionType !== noPosition) {
             this.#editingPosition.positionType = noPosition;
@@ -328,34 +312,42 @@ class ChordDancerElement extends HTMLElement {
         }
     }
 
-    #setChord(root: number, third: number, fifth: number, octave: number, isNew: boolean) {
-        if (isNew) {
-            this.#chordGraph.setAttribute("root", root.toString());
-            this.#chordGraph.setAttribute("third", third.toString());
-            this.#chordGraph.setAttribute("fifth", fifth.toString());
-            this.#chordGraph.setAttribute("octave", octave.toString());
-
-            this.#editingPanel.setAttribute("new-root", root.toString());
-            this.#editingPanel.setAttribute("new-third", third.toString());
-            this.#editingPanel.setAttribute("new-fifth", fifth.toString());
-            this.#editingPanel.setAttribute("new-octave", octave.toString());
-        }
-
-        this.#editingPanel.setAttribute("root", root.toString());
-        this.#editingPanel.setAttribute("third", third.toString());
-        this.#editingPanel.setAttribute("fifth", fifth.toString());
-        this.#editingPanel.setAttribute("octave", octave.toString());
-
+    #setNewChord(root: number, third: number, fifth: number, octave: number) {
         this.#chordPicker.setAttribute("root", root.toString());
         this.#chordPicker.setAttribute("third", third.toString());
         this.#chordPicker.setAttribute("fifth", fifth.toString());
         this.#chordPicker.setAttribute("octave", octave.toString());
+
+        this.#chordGraph.setAttribute("root", root.toString());
+        this.#chordGraph.setAttribute("third", third.toString());
+        this.#chordGraph.setAttribute("fifth", fifth.toString());
+        this.#chordGraph.setAttribute("octave", octave.toString());
+
+        this.#editingPanel.setAttribute("new-root", root.toString());
+        this.#editingPanel.setAttribute("new-third", third.toString());
+        this.#editingPanel.setAttribute("new-fifth", fifth.toString());
+        this.#editingPanel.setAttribute("new-octave", octave.toString());
+    }
+
+    #setCurrentChord(root: number, third: number, fifth: number, octave: number) {
+        this.#editingPanel.setAttribute("root", root.toString());
+        this.#editingPanel.setAttribute("third", third.toString());
+        this.#editingPanel.setAttribute("fifth", fifth.toString());
+        this.#editingPanel.setAttribute("octave", octave.toString());
+    }
+
+    #setChord(root: number, third: number, fifth: number, octave: number, isNew: boolean) {
+        if (isNew) {
+            this.#setNewChord(root, third, fifth, octave);
+        }
+
+        this.#setCurrentChord(root, third, fifth, octave);
     }
 
     #clearEditingStatus() {
         this.#chordPicker.removeAttribute("editing");
+        this.#editingPanel.removeAttribute("editing");
         this.#chordGraph.removeAttribute("editing");
-        this.#editingPanel.setAttribute("disabled", "");
         this.#chordSheet.clearSelection();
     }
 
@@ -391,8 +383,8 @@ class ChordDancerElement extends HTMLElement {
             this.#playButton.disabled = false;
 
             if (this.#editingPosition.position !== undefined) { // Use selected chord
-                this.#editingPanel.removeAttribute("disabled");
                 this.#chordPicker.setAttribute("editing", "");
+                this.#editingPanel.setAttribute("editing", "");
                 this.#chordGraph.setAttribute("editing", "");
 
                 const chord = this.#chordHistory.getChord(this.#editingPosition.position)!;

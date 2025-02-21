@@ -9,6 +9,8 @@ declare global {
   interface HTMLElementEventMap {
     "chordPushed": ChordEvent;
     "chordPicked": ChordEvent;
+    "resetChord": ChordEvent;
+    "appendChord": ChordEvent;
     "updateChord": ChordEvent;
     "insertChordBefore": ChordEvent;
     "insertChordAfter": ChordEvent;

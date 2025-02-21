@@ -61,7 +61,7 @@ export class ChordHelper {
 
     static nameChord(root?: number, third?: number, fifth?: number): string | undefined {
         const rootName = ChordHelper.noteNames[root!];
-        const chordName = ChordHelper.chordNames[third!]?.[fifth!];
+        const chordName = ChordHelper.chordNames[third!]?.[fifth!] ?? `${ChordHelper.thirdNames[third!]}${ChordHelper.fifthNames[fifth!]}`;
         return (rootName && chordName)
             ? `${rootName}${chordName}`
             : undefined;
