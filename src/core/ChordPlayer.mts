@@ -6,13 +6,14 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
     chordEnded: IndexEvent;
 }>) {
     #volume = 1;
-    #audioCtx?: AudioContext;
-    #wave?: PeriodicWave;
-    #chordGain?: GainNode | undefined;
-    #mainGain?: GainNode;
+    #audioCtx: AudioContext;
+    #wave: PeriodicWave;
+    #mainGain: GainNode;
+    #chordGain: GainNode | undefined;
     static #chordLength = 1;
 
-    initAudioContext() {
+    constructor() {
+        super();
         this.#audioCtx = new AudioContext();
         this.#wave = this.#audioCtx.createPeriodicWave([0, 1, 3], [2, 0, 3]);
         this.#mainGain = new GainNode(this.#audioCtx);
@@ -21,7 +22,7 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
 
     set volume(value) {
         this.#volume = value;
-        if (this.#mainGain !== undefined) this.#mainGain.gain.setValueAtTime(this.#volume, this.#audioCtx!.currentTime);
+        this.#mainGain.gain.setValueAtTime(this.#volume, this.#audioCtx.currentTime);
     }
 
     get volume() {
@@ -30,7 +31,7 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
 
     stopChord() {
         if (this.#chordGain) {
-            this.#chordGain.gain.linearRampToValueAtTime(0, this.#audioCtx!.currentTime + 0.1);
+            this.#chordGain.gain.linearRampToValueAtTime(0, this.#audioCtx.currentTime + 0.1);
             this.#chordGain = undefined;
         }
     }
@@ -41,10 +42,12 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
         this.#stopPlayback();
     }
 
-    #playChord(root: number, third: number, fifth: number, octave: number, onEnded: ((this: AudioScheduledSourceNode, ev: Event) => any) | null = null) {
-        if (this.#audioCtx === undefined) this.initAudioContext();
+    async #playChord(root: number, third: number, fifth: number, octave: number, onEnded: ((this: AudioScheduledSourceNode, ev: Event) => any) | null = null) {
+        if (this.#audioCtx.state !== "running") {
+            await this.#audioCtx.resume();
+        }
 
-        console.log(this.#audioCtx!.state, this.#audioCtx!.currentTime, this.#audioCtx);
+        console.log(this.#audioCtx.state, this.#audioCtx.currentTime, this.#audioCtx);
         this.stopChord();
 
         const freqs = [
@@ -53,8 +56,8 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
             440 * Math.pow(2, (root + fifth - 9 + octave * 12) / 12)
         ];
 
-        this.#chordGain = new GainNode(this.#audioCtx!);
-        const startTime = this.#audioCtx!.currentTime;
+        this.#chordGain = new GainNode(this.#audioCtx);
+        const startTime = this.#audioCtx.currentTime;
         const peakTime = startTime + 0.1;
         const endTime = startTime + ChordPlayer.#chordLength;
         this.#chordGain.gain.setValueAtTime(0, startTime);
@@ -64,16 +67,16 @@ export class ChordPlayer extends (EventTarget as TypedEventTarget<{
         const oscs = [];
 
         for (const freq of freqs) {
-            const osc = this.#audioCtx!.createOscillator();
+            const osc = this.#audioCtx.createOscillator();
             osc.setPeriodicWave(this.#wave!);
             osc.frequency.value = freq;
-            osc.connect(this.#chordGain).connect(this.#mainGain!).connect(this.#audioCtx!.destination);
+            osc.connect(this.#chordGain).connect(this.#mainGain!).connect(this.#audioCtx.destination);
             oscs.push(osc);
         }
 
         for (const osc of oscs) {
             osc.start();
-            osc.stop(this.#audioCtx!.currentTime + ChordPlayer.#chordLength);
+            osc.stop(this.#audioCtx.currentTime + ChordPlayer.#chordLength);
         }
 
         oscs[0]!.onended = onEnded;

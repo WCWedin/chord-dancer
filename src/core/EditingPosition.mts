@@ -1,3 +1,5 @@
+import { type Selection } from "./types.mjs"
+
 export const noPosition: unique symbol = Symbol("noPosition");
 export const historicPosition: unique symbol = Symbol("historicPosition");
 export const updatedPosition: unique symbol = Symbol("updatedPosition");
@@ -12,17 +14,17 @@ export class EditingPosition {
     set positionType(positionType) {
         this.#positionType = positionType;
         if (this.#positionType === noPosition || this.#positionType === historicPosition) {
-            this.#position = undefined;
+            this.#position = null;
         }
     }
 
-    #position: number | undefined = undefined;
+    #position: Selection = null;
     get position() {
         return this.#position;
     }
     set position(position) {
         this.#position = position;
-        if (this.#position === undefined) {
+        if (this.#position === null) {
             this.#positionType = noPosition;
         } else if (this.#positionType === noPosition || this.#positionType === historicPosition) {
             this.#positionType = updatedPosition

@@ -22,7 +22,30 @@ export class ChordHistory extends EventTarget {
     }
 
     get selectedIndex(): Selection {
-        return this.#selections[this.#currentIndex];
+        return this.#selections[this.#currentIndex]!;
+    }
+
+    toJson() {
+        return JSON.stringify({
+            states: this.#states,
+            selections: this.#selections,
+            currentIndex: this.#currentIndex
+        });
+    }
+
+    fromJson(json: string) {
+        const history = JSON.parse(json);
+        if (
+            history.hasOwnProperty("states")
+            && history.hasOwnProperty("selections")
+            && history.hasOwnProperty("currentIndex")
+        ) {
+            this.#states = history.states;
+            this.#selections = history.selections;
+            this.#currentIndex = history.currentIndex;
+        } else {
+            throw `Attempted to call fromJson with invalid history object:\n${JSON.stringify(history, null, 2)}`;
+        }
     }
 
     #pushState(chords: State, selectedChord?: Selection) {
@@ -32,12 +55,16 @@ export class ChordHistory extends EventTarget {
         ];
         this.#selections = [
             ...this.#selections.slice(0, this.#currentIndex + 1),
-            selectedChord
+            selectedChord ?? null
         ];
 
         this.#currentIndex = this.#states.length - 1;
 
         this.dispatchEvent(new Event("stateUpdated"));
+    }
+
+    loadState(state: State) {
+        this.#pushState(state);
     }
 
     push(chord: Chord) {
@@ -47,106 +74,118 @@ export class ChordHistory extends EventTarget {
         ]);
     }
 
-    edit(index: number | undefined, chord: Chord) {
-        if (index === undefined || this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call edit on chord with index ${index}, which does not exist.`);
+    edit(selection: Selection, chord: Chord) {
+        if (selection === null || this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call edit on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        if (this.currentChords[index].every((v: number, i: number) => v === chord[i])) {
+        if (this.currentChords[selection].every((v: number, i: number) => v === chord[i])) {
             return;
         }
 
-        this.#pushState([
-            ...this.currentChords.slice(0, index),
-            chord,
-            ...this.currentChords.slice(index + 1)
-        ], index);
+        this.#pushState(
+            [
+                ...this.currentChords.slice(0, selection),
+                chord,
+                ...this.currentChords.slice(selection + 1)
+            ],
+            selection
+        );
     }
 
-    insertBefore(index: number | undefined, chord: Chord) {
-        if (index === undefined || this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call insertBefore on chord with index ${index}, which does not exist.`);
+    insertBefore(selection: Selection, chord: Chord) {
+        if (selection === null || this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call insertBefore on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        this.#pushState([
-            ...this.currentChords.slice(0, index),
-            chord,
-            ...this.currentChords.slice(index)
-        ], index);
+        this.#pushState(
+            [
+                ...this.currentChords.slice(0, selection),
+                chord,
+                ...this.currentChords.slice(selection)
+            ],
+            selection
+        );
     }
 
-    insertAfter(index: number | undefined, chord: Chord) {
-        if (index === undefined || this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call insertAfter on chord with index ${index}, which does not exist.`);
+    insertAfter(selection: Selection, chord: Chord) {
+        if (selection === null || this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call insertAfter on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        this.#pushState([
-            ...this.currentChords.slice(0, index + 1),
-            chord,
-            ...this.currentChords.slice(index + 1)
-        ], index + 1);
+        this.#pushState(
+            [
+                ...this.currentChords.slice(0, selection + 1),
+                chord,
+                ...this.currentChords.slice(selection + 1)
+            ],
+            selection + 1
+        );
     }
 
-    delete(index: number | undefined) {
-        if (index === undefined || this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call delete on chord with index ${index}, which does not exist.`);
+    delete(selection: Selection) {
+        if (selection === null || this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call delete on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        let newIndex: number | undefined ;
-        if (this.currentChords.length === 1) newIndex = undefined;
+        let newSelectiom: Selection;
+        if (this.currentChords.length === 1) newSelectiom = null;
         else {
-            newIndex = index <= this.currentChords.length - 2 ? index : this.currentChords.length - 2;
-            newIndex = newIndex > 0 ? newIndex : 0;
+            newSelectiom = selection <= this.currentChords.length - 2 ? selection : this.currentChords.length - 2;
+            newSelectiom = newSelectiom > 0 ? newSelectiom : 0;
         }
 
-        this.#pushState([
-            ...this.currentChords.slice(0, index),
-            ...this.currentChords.slice(index + 1)
-        ], newIndex);
+        this.#pushState(
+            [
+                ...this.currentChords.slice(0, selection),
+                ...this.currentChords.slice(selection + 1)
+            ],
+            newSelectiom
+        );
     }
 
-    clear() {
-        if (this.latestChord) this.#pushState([]);
-    }
-
-    #setOctave(index: number | undefined, octave: number) {
-        if (index === undefined || this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call #setOctave on chord with index ${index}, which does not exist.`);
+    #setOctave(selection: Selection, octave: number) {
+        if (selection === null || this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call #setOctave on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        this.edit(index, [
-            this.currentChords[index][0],
-            this.currentChords[index][1],
-            this.currentChords[index][2],
+        this.edit(selection, [
+            this.currentChords[selection][0],
+            this.currentChords[selection][1],
+            this.currentChords[selection][2],
             octave
         ]);
     }
 
-    increaseOctave(index?: number | undefined) {
-        index = index ?? this.#latestIndex;
+    increaseOctave(selection?: Selection) {
+        selection = selection ?? this.#latestIndex;
 
-        if (this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call increaseOctave on chord with index ${index}, which does not exist.`);
+        if (this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call increaseOctave on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        this.#setOctave(index, this.currentChords[index]![3]! + 1);
+        this.#setOctave(selection, this.currentChords[selection]![3]! + 1);
     }
 
-    decreaseOctave(index?: number | undefined) {
-        index = index ?? this.#latestIndex;
+    decreaseOctave(selection?: Selection) {
+        selection = selection ?? this.#latestIndex;
 
-        if (this.currentChords[index] === undefined) {
-            console.warn(`Attempted to call decreaseOctave on chord with index ${index}, which does not exist.`);
+        if (this.currentChords[selection] === undefined) {
+            console.warn(`Attempted to call decreaseOctave on chord with index ${selection}, which does not exist.`);
             return;
         }
 
-        this.#setOctave(index, this.currentChords[index]![3]! - 1);
+        this.#setOctave(selection, this.currentChords[selection]![3]! - 1);
+    }
+
+    clear() {
+        if (this.latestChord) this.#pushState([]);
     }
 
     get canUndo(): boolean {

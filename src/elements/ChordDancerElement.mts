@@ -36,13 +36,15 @@ class ChordDancerElement extends HTMLElement {
         { // Add styles.
             const style = new CSSStyleSheet();
 
-            style.insertRule(`
-            #body,
-            chord-picker,
-            editing-panel,
-            chord-graph {
-                --border: var(--border-width) solid var(--border-color);
-            }`);
+            { // Add border rules.
+                style.insertRule(`
+                #body,
+                chord-picker,
+                editing-panel,
+                chord-graph {
+                    --border: var(--border-width) solid var(--border-color);
+                }`);
+            }
 
             { // Add layout rules.
                 style.insertRule(`
@@ -54,7 +56,7 @@ class ChordDancerElement extends HTMLElement {
                 }`);
 
                 style.insertRule(`
-                .buttons, chord-picker {
+                chord-picker, editing-panel, .buttons {
                     margin: 1em 0;
                 }`);
 
@@ -124,7 +126,7 @@ class ChordDancerElement extends HTMLElement {
                 }`);
 
 
-                // Nesting/is on pseudo-elements isn't supported: https://github.com/w3c/csswg-drafts/issues/9702
+                // Nesting/is on pseudo-elements isn't supported: https://github.com/w3c/csswg-drafts/issues/9702.
                 style.insertRule(`
                 button:focus-visible:not(:hover, :active, :disabled),
                 chord-picker::part(control):focus-visible:not(:hover, :active, :disabled),
@@ -162,6 +164,7 @@ class ChordDancerElement extends HTMLElement {
                     background-color: var(--button-disabled-background-color);
                 }`);
             }
+
             dancer.adoptedStyleSheets = [style];
         }
 
@@ -169,6 +172,7 @@ class ChordDancerElement extends HTMLElement {
             this.#chordHistory = new ChordHistory();
             this.#chordHistory.addEventListener("stateUpdated", () => {
                 this.#updateUI();
+                this.#playCurrentChord();
             });
         }
 
@@ -212,7 +216,7 @@ class ChordDancerElement extends HTMLElement {
             });
         }
 
-        { // Add editing panel
+        { // Add editing panel.
             this.#editingPanel = body.appendChild(document.createElement("editing-panel"));
             this.#editingPanel.addEventListener("stopEditing", () => {
                 this.#handleDeselection();
@@ -294,6 +298,7 @@ class ChordDancerElement extends HTMLElement {
             this.#chordSheet.addEventListener("chordSelected", (event) => {
                 this.#editingPosition.position = event.detail.index;
                 this.#updateUI();
+                this.#playCurrentChord();
             });
             this.#chordSheet.addEventListener("chordDeselected", () => this.#handleDeselection());
             this.#chordSheet.addEventListener("selectionCleared", () => this.#handleDeselection());
@@ -302,13 +307,32 @@ class ChordDancerElement extends HTMLElement {
             });
         }
 
+        const history = localStorage.getItem("#chordHistory");
+        if (history !== null) {
+            this.#editingPosition.positionType = historicPosition;
+            try {
+                this.#chordHistory.fromJson(history);
+            } catch (error) {
+                console.error(error);
+            }
+        }
         this.#updateUI();
+    }
+
+    #playCurrentChord() {
+        const chord = this.#editingPosition.position !== null
+            ? this.#chordHistory.getChord(this.#editingPosition.position)!
+            : this.#chordHistory.latestChord;
+        if (chord != undefined) {
+            this.#chordPlayer.playChord(...chord);
+        }
     }
 
     #handleDeselection() {
         if (this.#editingPosition.positionType !== noPosition) {
             this.#editingPosition.positionType = noPosition;
             this.#updateUI();
+            this.#playCurrentChord();
         }
     }
 
@@ -360,20 +384,20 @@ class ChordDancerElement extends HTMLElement {
 
         this.#chordSheet.chords = this.#chordHistory.currentChords;
 
-        { // Manage editing position
+        { // Manage editing position.
             if (this.#editingPosition.positionType === historicPosition) {
                 this.#editingPosition.position = this.#chordHistory.selectedIndex;
             }
 
             if (
-                this.#editingPosition.position !== undefined
+                this.#editingPosition.position !== null
                 && this.#editingPosition.position >= this.#chordHistory.length
             ) {
                 this.#editingPosition.positionType = noPosition;
             }
         }
 
-        if (this.#chordHistory.latestChord === undefined) { // Reset UI
+        if (this.#chordHistory.latestChord === undefined) { // Reset UI.
             this.#clearEditingStatus();
             this.#clearButton.disabled = true;
             this.#playButton.disabled = true;
@@ -382,7 +406,7 @@ class ChordDancerElement extends HTMLElement {
             this.#clearButton.disabled = false;
             this.#playButton.disabled = false;
 
-            if (this.#editingPosition.position !== undefined) { // Use selected chord
+            if (this.#editingPosition.position !== null) { // Use selected chord.
                 this.#chordPicker.setAttribute("editing", "");
                 this.#editingPanel.setAttribute("editing", "");
                 this.#chordGraph.setAttribute("editing", "");
@@ -390,15 +414,14 @@ class ChordDancerElement extends HTMLElement {
                 const chord = this.#chordHistory.getChord(this.#editingPosition.position)!;
                 const isNew = this.#editingPosition.positionType === updatedPosition;
                 this.#setChord(...chord, isNew);
-                this.#chordPlayer.playChord(...chord);
                 this.#chordSheet.selectChord(this.#editingPosition.position);
                 if (isNew) this.#editingPosition.positionType == retainedPosition;
-            } else { // Use latest chord
+            } else { // Use latest chord.
                 this.#clearEditingStatus();
                 this.#setChord(...this.#chordHistory.latestChord, true);
-                this.#chordPlayer.playChord(...this.#chordHistory.latestChord);
             }
         }
+        localStorage.setItem("#chordHistory", this.#chordHistory.toJson());
     }
 }
 

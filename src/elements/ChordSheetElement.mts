@@ -157,6 +157,7 @@ export class ChordSheetElement extends HTMLElement {
                 if (event.key === "Enter") {
                     this.dispatchEvent(new CustomEvent("chordPicked", { detail: { index } }) as IndexEvent);
                     event.preventDefault();
+                    event.stopPropagation();
                 }
             });
             chordLabel.setAttribute("tabindex", "0");

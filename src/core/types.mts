@@ -1,6 +1,6 @@
 export type Chord = [number, number, number, number];
 export type State = Chord[];
-export type Selection = number | undefined;
+export type Selection = number | null;
 
 export type ChordEvent = CustomEvent<Chord>;
 export type IndexEvent = CustomEvent<{ index: number }>;
