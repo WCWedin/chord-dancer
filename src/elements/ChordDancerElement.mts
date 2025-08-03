@@ -423,6 +423,46 @@ class ChordDancerElement extends HTMLElement {
         }
         localStorage.setItem("#chordHistory", this.#chordHistory.toJson());
     }
+
+    #saveToBrowser(name: string) {
+        const content = JSON.stringify(this.#chordHistory.currentChords);
+        localStorage.setItem(name, content);
+    }
+
+    #loadFromBrowser(name: string) {
+        const content = localStorage.getItem(name);
+        if (content !== null) {
+            const state = JSON.parse(content);
+            this.#chordHistory.loadState(state);
+        }
+    }
+
+    #saveToDisk(fileName: string) {
+        const a = document.createElement("a");
+        const content = JSON.stringify(this.#chordHistory.currentChords, null, 2);
+        const file = new Blob([content], {type: "application/json"});
+        a.href = URL.createObjectURL(file);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    #loadFromDisk() {
+        const input = document.createElement("input");
+        input.setAttribute("type", "file");
+        input.setAttribute("accept", ".json,text/json");
+        input.addEventListener("change", () => {
+            if (input.files && input.files.length === 1) {
+                let reader = new FileReader();
+                reader.addEventListener("load", () => {
+                    const state = JSON.parse(reader.result as string);
+                    this.#chordHistory.loadState(state);
+                });
+                reader.readAsText(input.files[0]!);
+            }
+        });
+        input.click();
+    }
 }
 
 export function initChordDancerElement() {

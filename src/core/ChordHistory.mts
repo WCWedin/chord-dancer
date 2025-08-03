@@ -64,7 +64,14 @@ export class ChordHistory extends EventTarget {
     }
 
     loadState(state: State) {
-        this.#pushState(state);
+        let currentState = this.#states[this.#currentIndex];
+        let isDuplicate = 
+            currentState
+            &&  currentState.length === state.length
+            && state.every((chord, chordIndex) => chord.every((note, noteIndex) => currentState[chordIndex] && currentState[chordIndex][noteIndex] == note));
+        if (!isDuplicate) {
+            this.#pushState(state);
+        }
     }
 
     push(chord: Chord) {

@@ -226,8 +226,8 @@ export class EditingPanelElement extends HTMLElement {
             this.#panel.appendChild(this.#updateButton);
             this.#panel.appendChild(this.#insertAfterButton);
 
-            this.#panel.appendChild(this.#stopButton);
             this.#panel.appendChild(this.#resetButton);
+            this.#panel.appendChild(this.#stopButton);
             this.#panel.appendChild(this.#deleteButton);
         } else {
             this.#panel.removeAttribute("editing");
