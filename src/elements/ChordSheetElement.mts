@@ -36,8 +36,14 @@ export class ChordSheetElement extends HTMLElement {
             }
         }`);
         style.insertRule(`
-        .vf-stavenote, text {
-            cursor: pointer;
+        .vf-stavenote {
+            &, & + text {
+                cursor: pointer;
+            }
+
+            & + text {
+                pointer-events: auto;
+            }
         }`);
         sheet.adoptedStyleSheets = [style];
 
@@ -116,11 +122,13 @@ export class ChordSheetElement extends HTMLElement {
     }
 
     #render() {
-        const notes = this.#chords.map(chord => StaveHelper.createChord(...chord));
+        const octaveShifts = this.#chords.map(chord => chord[3] >= 2 ? -1 : (chord[3] === -1 || chord[3] === -3) ? 1 : 0);
+        const chordClefs = this.#chords.map(chord => chord[3] <= -2 ? "bass" : "treble");
+        const chords = this.#chords.map((chord, index) => StaveHelper.createChord(...chord, octaveShifts[index]!, chordClefs[index]!));
         const chordNames = this.#chords.map(chord => StaveHelper.nameChord(chord[0], chord[1], chord[2]));
 
         const maxChords = Math.floor((this.#staveWidth) / StaveHelper.metrics.chordWidth);
-        const staveCount = Math.max(1, Math.ceil(notes.length / maxChords));
+        const staveCount = Math.max(1, Math.ceil(chords.length / maxChords));
 
         this.#container.textContent = "";
         const renderer = new Renderer(this.#container, Renderer.Backends.SVG);
@@ -130,10 +138,11 @@ export class ChordSheetElement extends HTMLElement {
         const context = renderer.getContext();
 
         for (let staveIndex = 0; staveIndex < staveCount || staveIndex === 0; ++staveIndex) {
-            const staveNotes = notes.slice(staveIndex * maxChords, (staveIndex + 1) * maxChords);
-            const staveChordNames = chordNames.slice(staveIndex * maxChords, (staveIndex + 1) * maxChords);
+            function staveSlice<T>(array: Array<T>): T[] {
+                return array.slice(staveIndex * maxChords, (staveIndex + 1) * maxChords);
+            }
             const top = StaveHelper.metrics.topMargin + staveIndex * (StaveHelper.metrics.staveHeight);
-            this.#renderStave(staveNotes, staveChordNames, context, top);
+            this.#renderStave(staveSlice(chords), staveSlice(chordNames), staveSlice(octaveShifts), staveSlice(chordClefs), context, top);
         }
 
         const chordElements = this.#container.querySelectorAll(".vf-stavenote");
@@ -143,7 +152,6 @@ export class ChordSheetElement extends HTMLElement {
             if (this.#selectedChords.has(index)) {
                 chordElement.classList.add("selected");
             }
-            chordElement.setAttribute("pointer-events", "bounding-box");
             chordElement.addEventListener("click", (event) => this.chordClicked(index, event));
             const chordLabel = chordElement.nextSibling! as SVGTextElement;
             chordLabel.addEventListener("click", (event) => this.chordClicked(index, event));
@@ -164,23 +172,25 @@ export class ChordSheetElement extends HTMLElement {
         }
     }
 
-    #renderStave(notes: StaveNote[], chordNames: TextNote[], context: RenderContext, top: number) {
-        const noteWidth = (this.#staveWidth - StaveHelper.metrics.clefWidth) / notes.length;
-        for (const noteIndex in notes) {
+    #renderStave(chords: StaveNote[], chordNames: TextNote[], octaveShifts: number[], chordClefs: string[], context: RenderContext, top: number) {
+        const noteWidth = (this.#staveWidth - StaveHelper.metrics.clefWidth) / chords.length;
+        for (const index in chords) {
             const measureWidth = noteWidth;
-            const leftEdge = StaveHelper.metrics.horizontalMargin + noteWidth * parseInt(noteIndex);
+            const leftEdge = StaveHelper.metrics.horizontalMargin + noteWidth * parseInt(index);
             const stave = new Stave(leftEdge, top, measureWidth);
             stave.setContext(context);
-            if (noteIndex === "0") {
-                stave.addClef("treble");
+            if (index === "0" || octaveShifts[index] !== octaveShifts[+index - 1] || chordClefs[index] !== chordClefs[+index - 1]) {
+                const clef = chordClefs[index]!
+                const annotation = octaveShifts[index] === -1 ? '8va' : octaveShifts[index] === 1  ? '8vb' : undefined;
+                stave.addClef(clef, "default", annotation);
             }
 
             const voice = new Voice({ num_beats: 1, beat_value: 1 }).setContext(context);
-            voice.addTickables([notes[noteIndex]!]).setStave(stave);
+            voice.addTickables([chords[index]!]).setStave(stave);
 
             const chordNameVoice = new Voice({ num_beats: 1, beat_value: 1 }).setContext(context);
-            chordNames[noteIndex]!.setStave(stave);
-            chordNameVoice.addTickables([chordNames[noteIndex]!]).setStave(stave);
+            chordNames[index]!.setStave(stave);
+            chordNameVoice.addTickables([chordNames[index]!]).setStave(stave);
 
             new Formatter().joinVoices([voice, chordNameVoice]).formatToStave([voice, chordNameVoice], stave);
             stave.draw();

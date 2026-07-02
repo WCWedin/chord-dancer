@@ -13,8 +13,8 @@ export class StaveHelper {
 
     static noteNames = Object.freeze(["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"]);
 
-    static createChord(root: number, third: number, fifth: number, octave: number) {
-        const position = 4 + octave;
+    static createChord(root: number, third: number, fifth: number, octave: number, octaveShift: number, clef: string) {
+        const position = 4 + octave + octaveShift;
         const keys = [
             `${StaveHelper.noteNames[root]}/${position}`,
             `${StaveHelper.noteNames[(root + third) % 12]}/${position + Math.floor((root + third) / 12)}`,
@@ -24,7 +24,9 @@ export class StaveHelper {
         const chord = new StaveNote(
             {
                 keys,
-                duration: "w"
+                duration: "w",
+                clef,
+                octave_shift: octaveShift
             }
         );
 
